@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ParkEase — Decentralized Urban Parking Network</title>
-  <link rel="stylesheet" href="/css/style.css?v=20261122_4">
+  <link rel="stylesheet" href="/css/style.css?v=20261122_5">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F172A'/><text x='50%' y='68%' font-size='56' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'>P</text></svg>">
@@ -20,6 +20,9 @@
     </div>
     <div class="nav-links" id="navLinks">
       <!-- Dynamic navigation links generated via JS -->
+    </div>
+    <div class="mobile-user-indicator" id="mobileUserIndicator" style="display:none;">
+      <!-- Mobile: shows user name or sign-in btn -->
     </div>
   </nav>
 
@@ -134,7 +137,7 @@
           <p style="color:var(--slate-500);font-size:14px;margin-top:4px;">Seamless protocol between society hosts and verified commuters.</p>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:24px;">
+        <div class="infra-grid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:24px;">
           <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:24px;">
             <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--brand-accent);margin-bottom:12px;">01 / ALLOCATION</div>
             <h3 style="font-size:15px;font-weight:700;color:var(--slate-900);margin-bottom:8px;">Space Tokenization</h3>
@@ -278,7 +281,7 @@
               <input type="text" class="form-control" placeholder="e.g. Covered Bay - Marvel Alura, Koregaon Park" required id="spTitle">
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="form-row-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
               <div>
                 <label class="field-label">Locality / Sector</label>
                 <select required id="spArea" class="form-control">
@@ -308,7 +311,7 @@
               <input type="text" class="form-control" placeholder="Society name, Wing, Bay Number" required id="spAddress">
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="form-row-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
               <div>
                 <label class="field-label">Vehicle Classification</label>
                 <select required id="spVehicle" class="form-control">
@@ -335,7 +338,7 @@
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="form-row-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
               <div>
                 <label class="field-label">Available Window Start</label>
                 <input type="time" required id="spFrom" class="form-control" value="09:00">
@@ -584,6 +587,36 @@
     </div>
   </div>
 
-  <script src="/js/app.js?v=20261122_4"></script>
+  <!-- ===== MOBILE BOTTOM TAB BAR ===== -->
+  <nav class="mobile-tab-bar mobile-only" id="mobileTabBar">
+    <div class="tab-items">
+      <button class="tab-item active" onclick="navigate('home')" data-page="home">
+        <span class="tab-icon">P</span>
+        <span class="tab-label">ParkEase</span>
+      </button>
+      <button class="tab-item" onclick="navigate('search')" data-page="search">
+        <span class="tab-icon">🔍</span>
+        <span class="tab-label">Find</span>
+      </button>
+      <button class="tab-item" onclick="navigate('list-space')" data-page="list-space">
+        <span class="tab-icon">+</span>
+        <span class="tab-label">List Spot</span>
+      </button>
+      <button class="tab-item" onclick="navigate('dashboard')" data-page="dashboard">
+        <span class="tab-icon">📋</span>
+        <span class="tab-label">Dashboard</span>
+      </button>
+      <button class="tab-item" onclick="navigate('admin')" data-page="admin">
+        <span class="tab-icon">⚙</span>
+        <span class="tab-label">Admin</span>
+      </button>
+      <button class="tab-item" id="mobileAuthTab" onclick="showAuthModal('login')" data-page="auth">
+        <span class="tab-icon">👤</span>
+        <span class="tab-label">Hi, Sign In</span>
+      </button>
+    </div>
+  </nav>
+
+  <script src="/js/app.js?v=20261122_5"></script>
 </body>
 </html>

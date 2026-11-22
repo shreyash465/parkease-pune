@@ -229,6 +229,49 @@ function updateNav() {
       <button onclick="showAuthModal('register')" class="btn btn-dark btn-sm">Register</button>
     `;
   }
+
+  // Update mobile user indicator
+  const mobileIndicator = document.getElementById('mobileUserIndicator');
+  if (mobileIndicator) {
+    if (currentUser) {
+      mobileIndicator.innerHTML = `
+        <span style="font-size:12px;font-weight:600;color:var(--slate-700);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${currentUser.name.split(' ')[0]}</span>
+        <button onclick="logout()" style="font-size:11px;color:var(--status-danger-text);background:none;border:none;cursor:pointer;padding:4px;">Out</button>
+      `;
+    } else {
+      mobileIndicator.innerHTML = `
+        <button onclick="showAuthModal('login')" class="btn btn-dark btn-sm" style="font-size:11px;padding:6px 12px;">Sign In</button>
+      `;
+    }
+  }
+
+  // Update mobile tab bar
+  updateMobileTabBar();
+}
+
+function updateMobileTabBar() {
+  const tabBar = document.getElementById('mobileTabBar');
+  if (!tabBar) return;
+
+  // Update active state
+  tabBar.querySelectorAll('.tab-item').forEach(tab => {
+    const page = tab.getAttribute('data-page');
+    tab.classList.toggle('active', page === currentPage);
+  });
+
+  // Update auth tab
+  const authTab = document.getElementById('mobileAuthTab');
+  if (authTab) {
+    if (currentUser) {
+      authTab.querySelector('.tab-icon').textContent = '👤';
+      authTab.querySelector('.tab-label').textContent = currentUser.name.split(' ')[0];
+      authTab.setAttribute('onclick', 'logout()');
+    } else {
+      authTab.querySelector('.tab-icon').textContent = '👤';
+      authTab.querySelector('.tab-label').textContent = 'Sign In';
+      authTab.setAttribute('onclick', "showAuthModal('login')");
+    }
+  }
 }
 
 function navigate(page, data) {
