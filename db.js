@@ -104,22 +104,35 @@ function saveDB() {
   fs.writeFileSync(DB_PATH, buffer);
 }
 
+function ensureAdminExists() {
+  // Always ensure Vishwajeet More admin account exists (survives DB persistence across deploys)
+  const founderPass = bcrypt.hashSync('aenroxadmin123', 10);
+  const existing = db.exec("SELECT id FROM users WHERE email = 'vishwajeet@aenrox.com'");
+  if (!existing.length || !existing[0].values.length) {
+    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Vishwajeet More', 'vishwajeet@aenrox.com', '9822012345', founderPass, 'admin']);
+    console.log('✅ Admin account (Vishwajeet More) created');
+  } else {
+    // Update password in case it changed
+    db.run("UPDATE users SET password = ?, role = 'admin' WHERE email = 'vishwajeet@aenrox.com'", [founderPass]);
+  }
+}
+
 function seedDemoData() {
+  // Always ensure admin exists regardless of demo data state
+  ensureAdminExists();
+
   const result = db.exec('SELECT COUNT(*) as count FROM users');
-  if (result[0].values[0][0] > 0) return;
+  // Skip demo seeding if more than just the admin exist
+  if (result[0].values[0][0] > 1) return;
 
   const hashedPass = bcrypt.hashSync('demo123', 10);
-  const founderPass = bcrypt.hashSync('aenroxadmin123', 10);
 
-  // Demo users (IDs 1-5 — spaces/bookings reference these owner_ids)
+  // Demo users (IDs depend on insertion order — spaces reference owner_ids 1-5 or adjusted)
   db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Rahul Sharma', 'rahul@demo.com', '9876543210', hashedPass, 'both']);
   db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Priya Deshmukh', 'priya@demo.com', '9876543211', hashedPass, 'both']);
   db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Amit Kulkarni', 'amit@demo.com', '9876543212', hashedPass, 'both']);
   db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Sneha Patil', 'sneha@demo.com', '9876543213', hashedPass, 'both']);
   db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Vikram Joshi', 'vikram@demo.com', '9876543214', hashedPass, 'both']);
-
-  // Executive Admin & Founder — ID 6 (inserted after demo users to preserve owner_id mappings)
-  db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Vishwajeet More', 'vishwajeet@aenrox.com', '9822012345', founderPass, 'admin']);
 
   // Demo parking spaces (Host rate; commuter pays host_rate / 0.90 with 10% commission included)
   const spaces = [
