@@ -1,6 +1,6 @@
-// ===== ParkEase Pune - Frontend Application =====
+// ===== ParkEase Pune — Enterprise Mobility Frontend Application =====
 
-// Determine API endpoint: Use Render backend when on custom domain or Cloudflare Pages
+// Production API endpoint resolution
 const API = (window.location.hostname.includes('aenrox.com') || window.location.hostname.includes('pages.dev'))
   ? 'https://parkease-pune.onrender.com'
   : (window.location.port === '3000' || window.location.port === '10000') ? '' : 'https://parkease-pune.onrender.com';
@@ -23,8 +23,7 @@ async function apiFetch(url, options = {}) {
     try {
       data = JSON.parse(text);
     } catch (e) {
-      // If server returned HTML (e.g. 404 or cold start)
-      return { ok: false, status: res.status, error: 'Service initializing, please retry in a few seconds', data: null };
+      return { ok: false, status: res.status, error: 'Service initializing, please retry momentarily', data: null };
     }
     return { ok: res.ok, status: res.status, data, error: data?.error };
   } catch (err) {
@@ -35,9 +34,9 @@ async function apiFetch(url, options = {}) {
 // ==================== INIT ====================
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Set today's date
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('searchDate').value = today;
+  const dateInput = document.getElementById('searchDate');
+  if (dateInput) dateInput.value = today;
 
   if (token) {
     fetchUser();
@@ -70,31 +69,39 @@ function authHeaders() {
 }
 
 function showAuthModal(tab = 'login') {
-  document.getElementById('authModal').style.display = 'flex';
+  const modal = document.getElementById('authModal');
+  if (modal) modal.style.display = 'flex';
   switchAuthTab(tab);
 }
 
 function closeAuthModal() {
-  document.getElementById('authModal').style.display = 'none';
+  const modal = document.getElementById('authModal');
+  if (modal) modal.style.display = 'none';
 }
 
 function switchAuthTab(tab) {
-  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
-  document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
-  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
-  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
-  document.getElementById('authModalTitle').textContent = tab === 'login' ? 'Welcome Back' : 'Create Account';
+  const loginForm = document.getElementById('loginForm');
+  const regForm = document.getElementById('registerForm');
+  const tabLogin = document.getElementById('tabLogin');
+  const tabReg = document.getElementById('tabRegister');
+  const title = document.getElementById('authModalTitle');
+
+  if (loginForm) loginForm.style.display = tab === 'login' ? 'block' : 'none';
+  if (regForm) regForm.style.display = tab === 'register' ? 'block' : 'none';
+  if (tabLogin) tabLogin.classList.toggle('active', tab === 'login');
+  if (tabReg) tabReg.classList.toggle('active', tab === 'register');
+  if (title) title.textContent = tab === 'login' ? 'Sign In to Account' : 'Create Organization / User Account';
 }
 
 async function handleLogin(e) {
   e.preventDefault();
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPass').value.trim();
+  const email = document.getElementById('loginEmail')?.value.trim();
+  const password = document.getElementById('loginPass')?.value.trim();
   const submitBtn = e.target.querySelector('button[type="submit"]');
 
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Logging in... ⏳';
+    submitBtn.textContent = 'Authenticating...';
   }
 
   try {
@@ -110,32 +117,32 @@ async function handleLogin(e) {
       localStorage.setItem('parkease_token', token);
       closeAuthModal();
       updateNav();
-      showToast(`Welcome back, ${currentUser.name}! 👋`, 'success');
+      showToast(`Welcome back, ${currentUser.name}`, 'success');
       navigate('dashboard');
     } else {
-      showToast(res.error || 'Invalid email or password', 'error');
+      showToast(res.error || 'Invalid authentication credentials', 'error');
     }
   } catch (err) {
-    showToast('Connecting to server... Please try again.', 'error');
+    showToast('Connection failed. Please retry.', 'error');
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Login';
+      submitBtn.textContent = 'Sign In';
     }
   }
 }
 
 async function handleRegister(e) {
   e.preventDefault();
-  const name = document.getElementById('regName').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
-  const phone = document.getElementById('regPhone').value.trim();
-  const password = document.getElementById('regPass').value.trim();
+  const name = document.getElementById('regName')?.value.trim();
+  const email = document.getElementById('regEmail')?.value.trim();
+  const phone = document.getElementById('regPhone')?.value.trim();
+  const password = document.getElementById('regPass')?.value.trim();
   const submitBtn = e.target.querySelector('button[type="submit"]');
 
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Creating account... ⏳';
+    submitBtn.textContent = 'Registering...';
   }
 
   try {
@@ -151,7 +158,7 @@ async function handleRegister(e) {
       localStorage.setItem('parkease_token', token);
       closeAuthModal();
       updateNav();
-      showToast(`Welcome to ParkEase, ${currentUser.name}! 🎉`, 'success');
+      showToast(`Account registered for ${currentUser.name}`, 'success');
       navigate('dashboard');
     } else {
       showToast(res.error || 'Registration failed', 'error');
@@ -172,34 +179,36 @@ function logout() {
   localStorage.removeItem('parkease_token');
   updateNav();
   navigate('home');
-  showToast('Logged out successfully', 'success');
+  showToast('Signed out successfully', 'success');
 }
 
 // ==================== NAVIGATION ====================
 
 function updateNav() {
   const nav = document.getElementById('navLinks');
+  if (!nav) return;
+
   if (currentUser) {
     nav.innerHTML = `
-      <a href="#" onclick="navigate('search')" class="${currentPage === 'search' ? 'active' : ''}">🔍 Find</a>
-      <a href="#" onclick="navigate('list-space')" class="${currentPage === 'list-space' ? 'active' : ''}">➕ List Spot</a>
-      <a href="#" onclick="navigate('dashboard')" class="${currentPage === 'dashboard' ? 'active' : ''}">📊 Dashboard</a>
-      <a href="#" onclick="navigate('admin')" class="${currentPage === 'admin' ? 'active' : ''}">⚙️ Admin</a>
-      <span style="color:var(--gray-400);font-size:13px;">Hi, ${currentUser.name.split(' ')[0]}</span>
-      <button onclick="logout()" style="color:var(--danger)">Logout</button>
+      <a href="#" onclick="navigate('search')" class="${currentPage === 'search' ? 'active' : ''}">Inventory</a>
+      <a href="#" onclick="navigate('list-space')" class="${currentPage === 'list-space' ? 'active' : ''}">List Space</a>
+      <a href="#" onclick="navigate('dashboard')" class="${currentPage === 'dashboard' ? 'active' : ''}">Dashboard</a>
+      <a href="#" onclick="navigate('admin')" class="${currentPage === 'admin' ? 'active' : ''}">Clearing</a>
+      <span style="color:var(--slate-300);font-size:12px;margin:0 4px;">|</span>
+      <span style="color:var(--slate-700);font-size:13px;font-weight:600;">${currentUser.name}</span>
+      <button onclick="logout()" style="color:var(--status-danger-text);font-size:12px;cursor:pointer;">Sign Out</button>
     `;
   } else {
     nav.innerHTML = `
-      <a href="#" onclick="navigate('search')">🔍 Find Parking</a>
-      <a href="#" onclick="navigate('admin')">📊 Admin</a>
-      <button onclick="showAuthModal('login')" class="btn btn-secondary btn-sm">Login</button>
-      <button onclick="showAuthModal('register')" class="btn btn-primary btn-sm">Sign Up</button>
+      <a href="#" onclick="navigate('search')" class="${currentPage === 'search' ? 'active' : ''}">Explore Inventory</a>
+      <a href="#" onclick="navigate('admin')" class="${currentPage === 'admin' ? 'active' : ''}">Platform Clearing</a>
+      <button onclick="showAuthModal('login')" class="btn btn-secondary btn-sm">Sign In</button>
+      <button onclick="showAuthModal('register')" class="btn btn-dark btn-sm">Register</button>
     `;
   }
 }
 
 function navigate(page, data) {
-  // Hide all pages
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   currentPage = page;
 
@@ -209,7 +218,6 @@ function navigate(page, data) {
   updateNav();
   window.scrollTo(0, 0);
 
-  // Load page data
   switch(page) {
     case 'search': loadSpaces(); break;
     case 'detail': loadSpaceDetail(data); break;
@@ -232,24 +240,26 @@ async function loadAreas() {
     const areas = (res.ok && Array.isArray(res.data)) ? res.data : [];
     if (!areas.length) return;
 
-    // Populate search dropdown
     const searchArea = document.getElementById('searchArea');
     const filterArea = document.getElementById('filterArea');
-    if (searchArea) searchArea.innerHTML = '<option value="">All Areas</option>';
-    if (filterArea) filterArea.innerHTML = '<option value="">All Areas</option>';
+    if (searchArea) searchArea.innerHTML = '<option value="">All Locality Hubs</option>';
+    if (filterArea) filterArea.innerHTML = '<option value="">All Localities</option>';
+
     areas.forEach(a => {
-      if (searchArea) searchArea.innerHTML += `<option value="${a.area}">${a.area} (${a.space_count})</option>`;
+      if (searchArea) searchArea.innerHTML += `<option value="${a.area}">${a.area} (${a.space_count} Bays)</option>`;
       if (filterArea) filterArea.innerHTML += `<option value="${a.area}">${a.area}</option>`;
     });
 
-    // Populate areas grid
     const grid = document.getElementById('areasGrid');
     if (grid) {
       grid.innerHTML = areas.map(a => `
-        <div class="area-card" onclick="searchByArea('${a.area}')">
-          <h4>📍 ${a.area}</h4>
-          <p>${a.space_count} spot${a.space_count > 1 ? 's' : ''} available</p>
-          <div class="price-range">₹${a.min_price} - ₹${a.max_price}/hr</div>
+        <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius);padding:18px;cursor:pointer;transition:all 0.15s ease;" onclick="searchByArea('${a.area}')" onmouseover="this.style.borderColor='var(--slate-400)'" onmouseout="this.style.borderColor='var(--slate-200)'">
+          <div style="font-size:11px;font-weight:600;color:var(--brand-accent);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Sector</div>
+          <div style="font-size:15px;font-weight:700;color:var(--slate-900);">${a.area}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--slate-500);">
+            <span>${a.space_count} Bay${a.space_count > 1 ? 's' : ''} Allocated</span>
+            <span class="mono" style="font-weight:600;color:var(--slate-900);">₹${a.min_price}-${a.max_price}/hr</span>
+          </div>
         </div>
       `).join('');
     }
@@ -259,29 +269,30 @@ async function loadAreas() {
 }
 
 function searchByArea(area) {
-  document.getElementById('filterArea').value = area;
+  const filterArea = document.getElementById('filterArea');
+  if (filterArea) filterArea.value = area;
   navigate('search');
 }
 
 function searchSpaces() {
-  const area = document.getElementById('searchArea').value;
-  const vehicle = document.getElementById('searchVehicle').value;
-  const maxPrice = document.getElementById('searchMaxPrice').value;
+  const area = document.getElementById('searchArea')?.value || '';
+  const vehicle = document.getElementById('searchVehicle')?.value || '';
 
-  document.getElementById('filterArea').value = area;
-  document.getElementById('filterVehicle').value = vehicle;
+  const filterArea = document.getElementById('filterArea');
+  const filterVehicle = document.getElementById('filterVehicle');
+  if (filterArea) filterArea.value = area;
+  if (filterVehicle) filterVehicle.value = vehicle;
 
   navigate('search');
 }
 
-// ==================== SPACES & MAP ====================
+// ==================== SPACES & GEOSPATIAL MAP ====================
 
 function toggleSearchView(view) {
   currentSearchView = view;
   const listBtn = document.getElementById('viewListBtn');
   const mapBtn = document.getElementById('viewMapBtn');
   const mapContainer = document.getElementById('mapContainer');
-  const spacesGrid = document.getElementById('spacesGrid');
 
   if (view === 'map') {
     listBtn?.classList.remove('active');
@@ -309,7 +320,6 @@ function initOrUpdateMap(spaces) {
     }).addTo(puneMap);
   }
 
-  // Clear existing markers
   puneMap.eachLayer(layer => {
     if (layer instanceof L.Marker) {
       puneMap.removeLayer(layer);
@@ -320,18 +330,18 @@ function initOrUpdateMap(spaces) {
   validSpaces.forEach(s => {
     const icon = L.divIcon({
       className: 'custom-map-pin',
-      html: `<div style="background:#6C3CE1;color:white;font-weight:700;padding:6px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.3);font-size:12px;white-space:nowrap;border:2px solid white;">₹${s.price_per_hour}/hr</div>`,
-      iconSize: [60, 30],
-      iconAnchor: [30, 15]
+      html: `<div style="background:#0F172A;color:#FFFFFF;font-family:'JetBrains Mono',monospace;font-weight:700;padding:4px 9px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.25);font-size:11px;white-space:nowrap;border:1px solid #334155;">₹${s.price_per_hour}/hr</div>`,
+      iconSize: [60, 26],
+      iconAnchor: [30, 13]
     });
 
     const marker = L.marker([s.lat, s.lng], { icon }).addTo(puneMap);
     marker.bindPopup(`
-      <div style="font-family:sans-serif;padding:4px;">
-        <strong style="color:#1E1B4B;font-size:14px;">${s.title}</strong><br>
-        <span style="color:#6C3CE1;font-weight:700;font-size:15px;">₹${s.price_per_hour}/hr</span> · <span>${s.vehicle_type === 'car' ? '🚗 Car' : '🏍️ Bike'}</span><br>
-        <small style="color:#6B7280;">📍 ${s.area} (${s.address})</small><br>
-        <button onclick="navigate('detail', ${s.id})" style="margin-top:8px;background:#6C3CE1;color:white;border:none;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">View & Book</button>
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:6px;">
+        <div style="font-size:11px;color:#64748B;font-weight:600;text-transform:uppercase;">${s.area}</div>
+        <div style="font-weight:700;color:#0F172A;font-size:13px;margin:2px 0 4px;">${s.title}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#0F172A;font-size:14px;">₹${s.price_per_hour}/hr <span style="font-size:11px;color:#64748B;font-weight:500;">(${s.vehicle_type === 'car' ? 'Four-Wheeler' : 'Two-Wheeler'})</span></div>
+        <button onclick="navigate('detail', ${s.id})" style="margin-top:10px;background:#0F172A;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;width:100%;">View Bay Details</button>
       </div>
     `);
   });
@@ -356,7 +366,7 @@ async function loadSpaces() {
 
     const resultCountEl = document.getElementById('resultCount');
     if (resultCountEl) {
-      resultCountEl.textContent = `${spaces.length} parking spot${spaces.length !== 1 ? 's' : ''} found`;
+      resultCountEl.textContent = `${spaces.length} verified parking bays allocated`;
     }
 
     initOrUpdateMap(spaces);
@@ -366,38 +376,40 @@ async function loadSpaces() {
 
     if (spaces.length === 0) {
       grid.innerHTML = `
-        <div class="empty-state" style="grid-column:1/-1;">
-          <div class="icon">🅿️</div>
-          <h3>No parking spots found</h3>
-          <p>Try adjusting your filters or search in a different area</p>
+        <div style="grid-column:1/-1;text-align:center;padding:60px 0;background:white;border:1px solid var(--slate-200);border-radius:var(--radius-md);">
+          <div style="font-size:14px;font-weight:600;color:var(--slate-800);">No parking bays found matching query parameters</div>
+          <p style="font-size:12px;color:var(--slate-500);margin-top:4px;">Try modifying your sector filter or vehicle classification</p>
         </div>
       `;
       return;
     }
 
     grid.innerHTML = spaces.map(s => `
-      <div class="card space-card" onclick="navigate('detail', ${s.id})">
-        <div class="space-card-header">
-          <span class="vehicle-badge">${s.vehicle_type === 'car' ? '🚗 Car' : '🏍️ Bike'}</span>
-          <div class="price">₹${s.price_per_hour}<small>/hr</small></div>
-          <div style="font-size:13px;color:var(--gray-600);margin-top:4px;">
-            ≈ ₹${Math.round(s.price_per_hour * 8 * 0.85)} owner earnings for 8hrs
+      <div class="space-card" onclick="navigate('detail', ${s.id})">
+        <div class="space-card-top">
+          <div>
+            <span class="space-locality-tag">${s.area}</span>
+            <div class="rate-display">₹${s.price_per_hour}<small>/hr</small></div>
           </div>
+          <span class="type-pill">${s.vehicle_type === 'car' ? 'Four-Wheeler' : 'Two-Wheeler'}</span>
         </div>
         <div class="space-card-body">
-          <span class="area-tag">📍 ${s.area}</span>
           <h3>${s.title}</h3>
-          <div class="location">📌 ${s.address}</div>
-          <div class="time-info">🕐 ${formatTime(s.available_from)} - ${formatTime(s.available_to)} · ${s.available_days}</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
-            <div class="space-features">
-              ${s.is_covered ? '<span class="feature-badge active">🏠 Covered</span>' : ''}
-              ${s.has_cctv ? '<span class="feature-badge active">📹 CCTV</span>' : ''}
-              ${s.has_guard ? '<span class="feature-badge active">👮 Guard</span>' : ''}
+          <div class="address">${s.address}</div>
+          <div class="meta-row">
+            <span>Hours: ${formatTime(s.available_from)} &ndash; ${formatTime(s.available_to)}</span>
+            <span>&bull;</span>
+            <span>${s.available_days}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--slate-100);">
+            <div class="features-list">
+              ${s.is_covered ? '<span class="feat-tag">Covered Bay</span>' : ''}
+              ${s.has_cctv ? '<span class="feat-tag">CCTV</span>' : ''}
+              ${s.has_guard ? '<span class="feat-tag">Security</span>' : ''}
             </div>
-            <div class="rating-stars">
-              ${s.avg_rating > 0 ? `${'⭐'.repeat(Math.round(s.avg_rating))} <span class="count">(${s.review_count})</span>` : '<span class="count">New</span>'}
-            </div>
+            <span style="font-size:11px;font-weight:600;color:var(--slate-600);">
+              ${s.avg_rating > 0 ? `Rating: ${s.avg_rating.toFixed(1)}/5` : 'Standard'}
+            </span>
           </div>
         </div>
       </div>
@@ -421,99 +433,88 @@ async function loadSpaceDetail(id) {
 
     const content = document.getElementById('detailContent');
     content.innerHTML = `
-      <div class="detail-main">
-        <span class="area-tag" style="margin-bottom:12px;">📍 ${space.area}</span>
-        <h1 style="font-size:28px;font-weight:800;color:var(--gray-900);margin-bottom:8px;">${space.title}</h1>
-        <p style="color:var(--gray-500);font-size:15px;margin-bottom:24px;">📌 ${space.address}</p>
+      <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:32px;">
+        <span class="space-locality-tag" style="margin-bottom:8px;">${space.area} SECTOR</span>
+        <h1 style="font-size:24px;font-weight:800;color:var(--slate-900);letter-spacing:-0.02em;margin-bottom:6px;">${space.title}</h1>
+        <p style="color:var(--slate-500);font-size:14px;margin-bottom:28px;">Address: ${space.address}</p>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
-          <div style="background:var(--gray-50);padding:16px;border-radius:12px;">
-            <div style="font-size:12px;color:var(--gray-500);font-weight:600;text-transform:uppercase;">Vehicle Type</div>
-            <div style="font-size:16px;font-weight:600;margin-top:4px;">${space.vehicle_type === 'car' ? '🚗 Car' : '🏍️ Bike / Scooter'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;">
+          <div style="background:var(--slate-50);border:1px solid var(--slate-200);padding:14px 16px;border-radius:var(--radius);">
+            <div class="field-label" style="margin:0 0 4px;">Classification</div>
+            <div style="font-weight:600;font-size:14px;color:var(--slate-900);">${space.vehicle_type === 'car' ? 'Four-Wheeler (Sedan / SUV)' : 'Two-Wheeler (Bike / EV)'}</div>
           </div>
-          <div style="background:var(--gray-50);padding:16px;border-radius:12px;">
-            <div style="font-size:12px;color:var(--gray-500);font-weight:600;text-transform:uppercase;">Available Time</div>
-            <div style="font-size:16px;font-weight:600;margin-top:4px;">🕐 ${formatTime(space.available_from)} - ${formatTime(space.available_to)}</div>
+          <div style="background:var(--slate-50);border:1px solid var(--slate-200);padding:14px 16px;border-radius:var(--radius);">
+            <div class="field-label" style="margin:0 0 4px;">Availability Window</div>
+            <div style="font-weight:600;font-size:14px;color:var(--slate-900);">${formatTime(space.available_from)} &ndash; ${formatTime(space.available_to)}</div>
           </div>
-          <div style="background:var(--gray-50);padding:16px;border-radius:12px;">
-            <div style="font-size:12px;color:var(--gray-500);font-weight:600;text-transform:uppercase;">Available Days</div>
-            <div style="font-size:16px;font-weight:600;margin-top:4px;">📅 ${space.available_days}</div>
+          <div style="background:var(--slate-50);border:1px solid var(--slate-200);padding:14px 16px;border-radius:var(--radius);">
+            <div class="field-label" style="margin:0 0 4px;">Operating Days</div>
+            <div style="font-weight:600;font-size:14px;color:var(--slate-900);">${space.available_days}</div>
           </div>
-          <div style="background:var(--gray-50);padding:16px;border-radius:12px;">
-            <div style="font-size:12px;color:var(--gray-500);font-weight:600;text-transform:uppercase;">Landmark</div>
-            <div style="font-size:16px;font-weight:600;margin-top:4px;">🏛️ ${space.landmark || 'N/A'}</div>
+          <div style="background:var(--slate-50);border:1px solid var(--slate-200);padding:14px 16px;border-radius:var(--radius);">
+            <div class="field-label" style="margin:0 0 4px;">Sector Landmark</div>
+            <div style="font-weight:600;font-size:14px;color:var(--slate-900);">${space.landmark || 'Not Specified'}</div>
           </div>
         </div>
 
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:12px;">Amenities</h3>
-        <div class="space-features" style="margin-bottom:24px;">
-          <span class="feature-badge ${space.is_covered ? 'active' : ''}">${space.is_covered ? '✅' : '❌'} Covered Parking</span>
-          <span class="feature-badge ${space.has_cctv ? 'active' : ''}">${space.has_cctv ? '✅' : '❌'} CCTV Surveillance</span>
-          <span class="feature-badge ${space.has_guard ? 'active' : ''}">${space.has_guard ? '✅' : '❌'} Security Guard</span>
+        <h3 style="font-size:13px;font-weight:700;color:var(--slate-900);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Security & Facility Specifications</h3>
+        <div class="features-list" style="margin-bottom:28px;">
+          <span class="feat-tag" style="padding:6px 12px;font-size:12px;">${space.is_covered ? '✓ Covered Parking Bay' : 'Open Air Space'}</span>
+          <span class="feat-tag" style="padding:6px 12px;font-size:12px;">${space.has_cctv ? '✓ 24/7 CCTV Monitored' : 'No CCTV'}</span>
+          <span class="feat-tag" style="padding:6px 12px;font-size:12px;">${space.has_guard ? '✓ Gated Security Personnel' : 'Independent Gate'}</span>
         </div>
 
         ${space.description ? `
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">About this Spot</h3>
-          <p style="color:var(--gray-600);font-size:14px;line-height:1.7;margin-bottom:24px;">${space.description}</p>
+          <h3 style="font-size:13px;font-weight:700;color:var(--slate-900);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Bay Description</h3>
+          <p style="color:var(--slate-600);font-size:13px;line-height:1.7;margin-bottom:28px;">${space.description}</p>
         ` : ''}
 
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">Owner</h3>
-        <div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--gray-50);border-radius:12px;margin-bottom:24px;">
-          <div style="width:44px;height:44px;background:var(--primary-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--primary);">${space.owner_name.charAt(0)}</div>
+        <h3 style="font-size:13px;font-weight:700;color:var(--slate-900);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Designated Host Information</h3>
+        <div style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:var(--radius);margin-bottom:28px;">
+          <div style="width:40px;height:40px;background:var(--slate-900);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;">${space.owner_name.charAt(0)}</div>
           <div>
-            <div style="font-weight:600;font-size:15px;">${space.owner_name}</div>
-            <div style="font-size:13px;color:var(--gray-500);">📞 ${space.owner_phone}</div>
+            <div style="font-weight:700;font-size:14px;color:var(--slate-900);">${space.owner_name} <span class="badge badge-confirmed" style="font-size:10px;margin-left:6px;">Verified Resident</span></div>
+            <div style="font-size:12px;color:var(--slate-500);margin-top:2px;">Contact: ${space.owner_phone}</div>
           </div>
         </div>
-
-        ${space.reviews && space.reviews.length > 0 ? `
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:12px;">Reviews (${space.review_count})</h3>
-          ${space.reviews.map(r => `
-            <div class="review-item">
-              <div class="review-header">
-                <span class="name">${r.reviewer_name}</span>
-                <span class="rating-stars">${'⭐'.repeat(r.rating)}</span>
-              </div>
-              <p class="review-comment">${r.comment || ''}</p>
-            </div>
-          `).join('')}
-        ` : ''}
       </div>
 
-      <div class="detail-sidebar">
-        <div class="booking-card">
-          <div class="price-display">₹${space.price_per_hour}<small>/hour</small></div>
-          <div class="rating-stars" style="margin-bottom:20px;">
-            ${space.avg_rating > 0 ? `${'⭐'.repeat(Math.round(space.avg_rating))} <span class="count">(${space.review_count} reviews)</span>` : '<span class="count">No reviews yet</span>'}
+      <div>
+        <div style="background:var(--white);border:1px solid var(--slate-300);border-radius:var(--radius-md);padding:28px;box-shadow:var(--shadow-sm);position:sticky;top:80px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;">
+            <div class="rate-display">₹${space.price_per_hour}<small style="font-size:13px;color:var(--slate-500);">/hour</small></div>
+            <span style="font-size:12px;font-weight:600;color:var(--slate-500);">${space.avg_rating > 0 ? `Rating: ${space.avg_rating.toFixed(1)}/5` : 'Standard Tariff'}</span>
           </div>
 
-          <div class="form-group">
-            <label>Date</label>
-            <input type="date" id="bookDate" value="${new Date().toISOString().split('T')[0]}" min="${new Date().toISOString().split('T')[0]}">
+          <div style="margin-bottom:14px;">
+            <label class="field-label">Reservation Date</label>
+            <input type="date" id="bookDate" class="form-control" value="${new Date().toISOString().split('T')[0]}" min="${new Date().toISOString().split('T')[0]}">
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Start Time</label>
-              <input type="time" id="bookStart" value="${space.available_from}" onchange="updateCost()">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div>
+              <label class="field-label">Start Window</label>
+              <input type="time" id="bookStart" class="form-control" value="${space.available_from}" onchange="updateCost()">
             </div>
-            <div class="form-group">
-              <label>End Time</label>
-              <input type="time" id="bookEnd" value="${space.available_to}" onchange="updateCost()">
+            <div>
+              <label class="field-label">End Window</label>
+              <input type="time" id="bookEnd" class="form-control" value="${space.available_to}" onchange="updateCost()">
             </div>
           </div>
-          <div class="form-group">
-            <label>Vehicle Number</label>
-            <input type="text" id="bookVehicle" placeholder="MH12XX1234" style="text-transform:uppercase;">
+          <div style="margin-bottom:18px;">
+            <label class="field-label">Vehicle Registration Number</label>
+            <input type="text" id="bookVehicle" class="form-control mono" placeholder="MH12AB1234" style="text-transform:uppercase;letter-spacing:0.05em;">
           </div>
 
-          <div class="cost-breakdown" id="costBreakdown">
-            <!-- Dynamic -->
+          <div style="background:var(--slate-50);border:1px solid var(--slate-200);border-radius:var(--radius);padding:16px;margin-bottom:20px;" id="costBreakdown">
+            <!-- Dynamic cost summary -->
           </div>
 
-          <button class="btn btn-primary btn-lg" style="width:100%;margin-top:12px;" onclick="confirmBooking()">
-            🅿️ Book Now
+          <button class="btn btn-dark btn-lg" style="width:100%;font-size:14px;" onclick="confirmBooking()">
+            Reserve Space & Generate Security Pass
           </button>
-          <p style="text-align:center;font-size:12px;color:var(--gray-400);margin-top:8px;">You won't be charged yet</p>
+          <div style="text-align:center;font-size:11px;color:var(--slate-400);margin-top:10px;">
+            Instant Gate Authorization Issued via QR Protocol
+          </div>
         </div>
       </div>
     `;
@@ -540,10 +541,22 @@ function updateCost() {
   const breakdown = document.getElementById('costBreakdown');
   if (breakdown) {
     breakdown.innerHTML = `
-      <div class="cost-row"><span>₹${currentSpace.price_per_hour} × ${hours} hours</span><span>₹${total}</span></div>
-      <div class="cost-row"><span>Platform fee (15%)</span><span>₹${commission}</span></div>
-      <div class="cost-row"><span>Owner receives</span><span>₹${ownerPayout}</span></div>
-      <div class="cost-row"><span><strong>Total</strong></span><span><strong>₹${total}</strong></span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--slate-600);margin-bottom:6px;">
+        <span>Tariff (${hours} hrs &times; ₹${currentSpace.price_per_hour})</span>
+        <span class="mono">₹${total}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--slate-500);margin-bottom:6px;">
+        <span>Platform Settlement (15%)</span>
+        <span class="mono">₹${commission}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--slate-500);margin-bottom:10px;">
+        <span>Net Host Clearing</span>
+        <span class="mono">₹${ownerPayout}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;color:var(--slate-900);padding-top:8px;border-top:1px solid var(--slate-300);">
+        <span>Total Payable</span>
+        <span class="mono" style="color:var(--brand-accent);">₹${total}</span>
+      </div>
     `;
   }
 }
@@ -556,7 +569,7 @@ async function confirmBooking() {
 
   const vehicleNum = document.getElementById('bookVehicle')?.value?.trim()?.toUpperCase();
   if (!vehicleNum) {
-    showToast('Please enter your vehicle number', 'error');
+    showToast('Please provide your vehicle license registration number', 'error');
     return;
   }
 
@@ -596,53 +609,48 @@ function openPaymentModal() {
   const body = document.getElementById('paymentModalBody');
 
   body.innerHTML = `
-    <div style="background:#F5F0FF;border-radius:12px;padding:16px;margin-bottom:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span style="font-weight:700;color:#1E1B4B;font-size:16px;">${b.spaceTitle}</span>
-        <span style="background:#6C3CE1;color:white;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">📍 ${b.spaceArea}</span>
+    <div style="background:var(--slate-50);border:1px solid var(--slate-200);border-radius:var(--radius);padding:16px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-weight:700;color:var(--slate-900);font-size:14px;">${b.spaceTitle}</span>
+        <span class="badge badge-completed">${b.spaceArea}</span>
       </div>
-      <div style="font-size:13px;color:#4B5563;margin-bottom:4px;">📅 ${b.booking_date} · 🕐 ${formatTime(b.start_time)} - ${formatTime(b.end_time)} (${b.hours} hrs)</div>
-      <div style="font-size:13px;color:#4B5563;">🚗 Vehicle: <strong>${b.vehicle_number}</strong></div>
+      <div style="font-size:12px;color:var(--slate-500);margin-bottom:4px;">Date: ${b.booking_date} &bull; ${formatTime(b.start_time)} &ndash; ${formatTime(b.end_time)} (${b.hours} hrs)</div>
+      <div style="font-size:12px;color:var(--slate-700);">License Plate: <strong class="mono">${b.vehicle_number}</strong></div>
     </div>
 
-    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:16px;margin-bottom:20px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;color:#6B7280;">
-        <span>Parking Fee (${b.hours} hrs × ₹${Math.round(b.total_amount/b.hours)})</span>
-        <span>₹${b.total_amount}</span>
+    <div style="border:1px solid var(--slate-200);border-radius:var(--radius);padding:16px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:var(--slate-600);">
+        <span>Reservation Fee</span>
+        <span class="mono">₹${b.total_amount}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;color:#10B981;">
-        <span>Platform Commission (15% included)</span>
-        <span>₹${b.commission}</span>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;color:var(--slate-500);">
+        <span>Platform Commission (15% inclusive)</span>
+        <span class="mono">₹${b.commission}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px dashed #D1D5DB;font-weight:800;font-size:18px;color:#111827;">
-        <span>Total Payable</span>
-        <span style="color:#6C3CE1;">₹${b.total_amount}</span>
+      <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px dashed var(--slate-300);font-weight:800;font-size:16px;color:var(--slate-900);">
+        <span>Total Payable (INR)</span>
+        <span class="mono" style="color:var(--brand-accent);">₹${b.total_amount}</span>
       </div>
     </div>
 
-    <h4 style="font-size:14px;color:#374151;margin-bottom:12px;">Choose Payment Method</h4>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
-      <button type="button" class="btn btn-secondary active" style="padding:12px;justify-content:center;border-color:#6C3CE1;" onclick="selectPaymentMethod(this, 'upi')">
-        📱 UPI / GPay / PhonePe
+    <div style="font-size:12px;font-weight:600;color:var(--slate-700);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Select Settlement Method</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+      <button type="button" class="btn btn-secondary active" style="padding:10px;font-size:12px;" onclick="selectPaymentMethod(this, 'upi')">
+        UPI / Mobile Clearing
       </button>
-      <button type="button" class="btn btn-secondary" style="padding:12px;justify-content:center;" onclick="selectPaymentMethod(this, 'card')">
-        💳 Debit / Credit Card
+      <button type="button" class="btn btn-secondary" style="padding:10px;font-size:12px;" onclick="selectPaymentMethod(this, 'card')">
+        Corporate Card
       </button>
     </div>
 
-    <div id="upiPaySection">
-      <div class="form-group" style="margin-bottom:16px;">
-        <label>Enter UPI ID (e.g. mobile@upi, name@okhdfcbank)</label>
-        <input type="text" id="upiIdInput" value="${currentUser ? currentUser.phone + '@upi' : '9876543210@upi'}" placeholder="yourname@okhdfcbank">
-      </div>
+    <div id="upiPaySection" style="margin-bottom:20px;">
+      <label class="field-label">Virtual Payment Address (VPA / UPI ID)</label>
+      <input type="text" id="upiIdInput" class="form-control mono" value="${currentUser ? currentUser.phone + '@upi' : 'user@okhdfcbank'}" placeholder="mobile@upi">
     </div>
 
-    <button class="btn btn-primary btn-lg" style="width:100%;font-size:16px;" onclick="processPaymentAndBook()">
-      🔒 Pay ₹${b.total_amount} & Get Society Gate Pass
+    <button class="btn btn-dark btn-lg" style="width:100%;font-size:14px;" onclick="processPaymentAndBook()">
+      Authorize ₹${b.total_amount} & Issue Gate Pass
     </button>
-    <div style="text-align:center;font-size:12px;color:#9CA3AF;margin-top:8px;">
-      ⚡ Instant Gate Security Approval Pass Generated
-    </div>
   `;
 
   modal.style.display = 'flex';
@@ -651,29 +659,25 @@ function openPaymentModal() {
 function selectPaymentMethod(btn, method) {
   btn.parentElement.querySelectorAll('button').forEach(b => {
     b.classList.remove('active');
-    b.style.borderColor = '#D1D5DB';
   });
   btn.classList.add('active');
-  btn.style.borderColor = '#6C3CE1';
 
   const upiSec = document.getElementById('upiPaySection');
   if (upiSec) {
     if (method === 'upi') {
       upiSec.innerHTML = `
-        <div class="form-group" style="margin-bottom:16px;">
-          <label>Enter UPI ID (e.g. mobile@upi)</label>
-          <input type="text" id="upiIdInput" value="${currentUser ? currentUser.phone + '@upi' : 'user@upi'}">
-        </div>
+        <label class="field-label">Virtual Payment Address (VPA / UPI ID)</label>
+        <input type="text" id="upiIdInput" class="form-control mono" value="${currentUser ? currentUser.phone + '@upi' : 'user@okhdfcbank'}">
       `;
     } else {
       upiSec.innerHTML = `
-        <div class="form-group" style="margin-bottom:10px;">
-          <label>Card Number</label>
-          <input type="text" placeholder="4532 •••• •••• 8892" value="4532 9012 3456 8892">
+        <div style="margin-bottom:10px;">
+          <label class="field-label">Card Number</label>
+          <input type="text" class="form-control mono" placeholder="4532 •••• •••• 8892" value="4532 9012 3456 8892">
         </div>
-        <div class="form-row" style="margin-bottom:16px;">
-          <div><label style="font-size:12px;">Expiry</label><input type="text" placeholder="MM/YY" value="08/29"></div>
-          <div><label style="font-size:12px;">CVV</label><input type="password" placeholder="•••" value="892"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label class="field-label">Expiry (MM/YY)</label><input type="text" class="form-control mono" value="08/29"></div>
+          <div><label class="field-label">CVV</label><input type="password" class="form-control mono" value="892"></div>
         </div>
       `;
     }
@@ -690,7 +694,7 @@ async function processPaymentAndBook() {
   const btn = event?.currentTarget;
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Processing payment... ⏳';
+    btn.textContent = 'Clearing settlement...';
   }
 
   try {
@@ -708,7 +712,7 @@ async function processPaymentAndBook() {
     if (res.ok && res.data) {
       const data = res.data;
       closePaymentModal();
-      showToast(`Payment of ₹${data.total_amount} successful! Gate Pass ready. 🎉`, 'success');
+      showToast(`Settlement cleared: ₹${data.total_amount}. Security pass issued.`, 'success');
       showGatePass({
         id: data.id,
         space_title: pendingBooking.spaceTitle,
@@ -729,50 +733,52 @@ async function processPaymentAndBook() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'Pay & Get Gate Pass';
+      btn.textContent = 'Authorize & Issue Pass';
     }
   }
 }
 
-// ==================== SOCIETY GATE PASS ====================
+// ==================== CORPORATE SECURITY GATE PASS ====================
 
 function showGatePass(booking) {
   const modal = document.getElementById('gatePassModal');
   const body = document.getElementById('gatePassModalBody');
 
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PARKEASE-PUNE-PASS-${booking.id}-${booking.vehicle_number}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=PARKEASE-SECURE-ACCESS-${booking.id}-${booking.vehicle_number}`;
 
   body.innerHTML = `
-    <div style="border:2px dashed #6C3CE1;border-radius:16px;padding:24px;background:#FDFCFF;text-align:center;">
-      <div style="display:inline-block;background:#D1FAE5;color:#065F46;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:12px;">
-        ✅ VERIFIED SOCIETY GATE ENTRY
-      </div>
-      <h3 style="font-size:18px;color:#1E1B4B;margin-bottom:4px;">${booking.space_title || booking.title}</h3>
-      <p style="font-size:13px;color:#6B7280;margin-bottom:16px;">📍 ${booking.address || booking.area}</p>
-
-      <div style="background:white;padding:12px;display:inline-block;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:16px;">
-        <img src="${qrUrl}" alt="Gate Security QR" style="width:140px;height:140px;display:block;">
+    <div class="access-badge-container">
+      <div class="access-badge-header">
+        <div class="access-badge-title">Housing Society Entry Authorization</div>
+        <span class="badge badge-confirmed">Gate Verified</span>
       </div>
 
-      <div style="font-size:11px;color:#9CA3AF;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Vehicle Number</div>
-      <div style="font-size:22px;font-weight:800;color:#6C3CE1;letter-spacing:2px;margin-bottom:16px;background:#F5F0FF;padding:6px;border-radius:8px;">
-        ${booking.vehicle_number}
-      </div>
+      <div style="text-align:center;">
+        <div style="font-size:16px;font-weight:700;color:var(--slate-900);margin-bottom:4px;">${booking.space_title || booking.title}</div>
+        <div style="font-size:12px;color:var(--slate-500);margin-bottom:14px;">${booking.address || booking.area}</div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;font-size:12px;background:#F3F4F6;padding:12px;border-radius:10px;margin-bottom:16px;">
-        <div><strong style="color:#6B7280;">Date:</strong><br>${booking.booking_date}</div>
-        <div><strong style="color:#6B7280;">Time Slot:</strong><br>${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}</div>
-        <div><strong style="color:#6B7280;">Resident/Host:</strong><br>${booking.owner_name}</div>
-        <div><strong style="color:#6B7280;">Gate Code:</strong><br>PK-${1000 + Number(booking.id)}</div>
-      </div>
+        <div class="access-pass-qr">
+          <img src="${qrUrl}" alt="Security Scan QR" style="width:130px;height:130px;display:block;">
+        </div>
 
-      <div style="font-size:12px;color:#4B5563;line-height:1.4;">
-        Show this pass to security at the society entrance gate.
-      </div>
+        <div style="font-size:10px;font-weight:600;color:var(--slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Authorized Vehicle License</div>
+        <div class="access-plate">${booking.vehicle_number}</div>
 
-      <div style="display:flex;gap:8px;margin-top:20px;">
-        <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="window.print()">🖨️ Print Pass</button>
-        <button class="btn btn-primary btn-sm" style="flex:1;" onclick="closeGatePassModal(); navigate('dashboard');">Done</button>
+        <div class="access-grid-spec">
+          <div><div class="lbl">Permit Date</div><div class="val">${booking.booking_date}</div></div>
+          <div><div class="lbl">Authorized Hours</div><div class="val">${formatTime(booking.start_time)} &ndash; ${formatTime(booking.end_time)}</div></div>
+          <div><div class="lbl">Resident / Bay Allocator</div><div class="val">${booking.owner_name}</div></div>
+          <div><div class="lbl">Security Token</div><div class="val mono">AUTH-PK-${1000 + Number(booking.id)}</div></div>
+        </div>
+
+        <div style="font-size:11px;color:var(--slate-500);line-height:1.5;margin-bottom:20px;">
+          Present this verified pass upon arrival at the housing society entrance barrier. Security personnel can scan the token for bay allocation access.
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="window.print()">Print Official Pass</button>
+          <button class="btn btn-dark btn-sm" style="flex:1;" onclick="closeGatePassModal(); navigate('dashboard');">Close</button>
+        </div>
       </div>
     </div>
   `;
@@ -802,7 +808,7 @@ async function submitSpace(e) {
     available_from: document.getElementById('spFrom').value,
     available_to: document.getElementById('spTo').value,
     available_days: days,
-    description: document.getElementById('spDesc').value,
+    description: document.getElementById('spDesc')?.value || '',
     is_covered: document.getElementById('spCovered').checked,
     has_cctv: document.getElementById('spCCTV').checked,
     has_guard: document.getElementById('spGuard').checked
@@ -815,11 +821,11 @@ async function submitSpace(e) {
       body: JSON.stringify(space)
     });
     if (res.ok) {
-      showToast('Parking spot listed successfully! 🎉', 'success');
+      showToast('Parking bay registered and listed on inventory', 'success');
       document.getElementById('listSpaceForm').reset();
       navigate('dashboard');
     } else {
-      showToast(res.error || 'Failed to list', 'error');
+      showToast(res.error || 'Failed to list asset', 'error');
     }
   } catch (e) {
     showToast('Connection error', 'error');
@@ -842,31 +848,30 @@ async function loadDashboard() {
     const spaceBookings = spaceBookingsRes.ok && Array.isArray(spaceBookingsRes.data) ? spaceBookingsRes.data : [];
     const spaces = spacesRes.ok && Array.isArray(spacesRes.data) ? spacesRes.data : [];
 
-    // Stats
+    // Executive KPI Metrics
     document.getElementById('dashStats').innerHTML = `
       <div class="stat-card">
-        <div class="stat-icon purple">🅿️</div>
-        <h3>${dash.spaceCount}</h3>
-        <p>My Listed Spots</p>
+        <div class="stat-label">Registered Private Bays</div>
+        <div class="stat-value">${dash.spaceCount}</div>
+        <div class="stat-footer">Active real estate inventory</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon green">💰</div>
-        <h3>₹${dash.ownerStats?.total_earnings || 0}</h3>
-        <p>Total Earnings</p>
+        <div class="stat-label">Net Host Clearing</div>
+        <div class="stat-value mono">₹${dash.ownerStats?.total_earnings || 0}</div>
+        <div class="stat-footer">Cleared after 15% platform fee</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon orange">📋</div>
-        <h3>${dash.ownerStats?.active_bookings || 0}</h3>
-        <p>Active Bookings (Host)</p>
+        <div class="stat-label">Active Host Bookings</div>
+        <div class="stat-value">${dash.ownerStats?.active_bookings || 0}</div>
+        <div class="stat-footer">Current day bay occupancy</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon blue">🚗</div>
-        <h3>${dash.renterStats?.total_bookings || 0}</h3>
-        <p>My Bookings (Renter)</p>
+        <div class="stat-label">Total Renter Bookings</div>
+        <div class="stat-value">${dash.renterStats?.total_bookings || 0}</div>
+        <div class="stat-footer">Cumulative commuter reservations</div>
       </div>
     `;
 
-    // Store for tab switching
     window._dashData = { bookings, spaceBookings, spaces };
     renderDashTab('my-bookings');
   } catch (e) {
@@ -875,7 +880,7 @@ async function loadDashboard() {
 }
 
 function switchDashTab(tab, btn) {
-  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tabs-header .tab-btn').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderDashTab(tab);
 }
@@ -886,23 +891,22 @@ function renderDashTab(tab) {
   if (tab === 'my-bookings') {
     const bookings = window._dashData?.bookings || [];
     if (bookings.length === 0) {
-      content.innerHTML = `<div class="empty-state"><div class="icon">🚗</div><h3>No bookings yet</h3><p>Find a parking spot and book it!</p><button class="btn btn-primary" onclick="navigate('search')">Find Parking</button></div>`;
+      content.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--slate-400);"><p>No reservation history recorded.</p><button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="navigate('search')">Explore Available Bays</button></div>`;
       return;
     }
     content.innerHTML = bookings.map(b => `
-      <div class="booking-item">
-        <div class="booking-info">
+      <div class="ledger-item">
+        <div class="ledger-main">
           <h4>${b.title}</h4>
-          <p>📍 ${b.area} · ${b.vehicle_type === 'car' ? '🚗' : '🏍️'} ${b.vehicle_number || ''}</p>
-          <p>📅 ${b.booking_date} · 🕐 ${formatTime(b.start_time)} - ${formatTime(b.end_time)} (${b.hours}h)</p>
-          <p>Owner: ${b.owner_name} · 📞 ${b.owner_phone}</p>
+          <div class="sub">Sector: ${b.area} &bull; Vehicle: <span class="mono" style="font-weight:600;color:var(--slate-800);">${b.vehicle_number || 'N/A'}</span></div>
+          <div class="sub" style="margin-top:2px;">Scheduled: ${b.booking_date} (${formatTime(b.start_time)} &ndash; ${formatTime(b.end_time)}, ${b.hours} hrs) &bull; Host: ${b.owner_name} (${b.owner_phone})</div>
         </div>
-        <div class="booking-meta">
-          <div class="amount">₹${b.total_amount}</div>
-          <span class="status-badge status-${b.status}">${b.status}</span>
+        <div style="text-align:right;">
+          <div class="ledger-amount">₹${b.total_amount}</div>
+          <span class="badge badge-${b.status}">${b.status}</span>
           ${b.status === 'confirmed' ? `
-            <div style="margin-top:8px;display:flex;gap:4px;justify-content:flex-end;">
-              <button class="btn btn-primary btn-sm" onclick='showGatePass(${JSON.stringify(b).replace(/'/g, "&apos;")})'>🛡️ Gate Pass</button>
+            <div style="margin-top:10px;display:flex;gap:6px;justify-content:flex-end;">
+              <button class="btn btn-dark btn-sm" onclick='showGatePass(${JSON.stringify(b).replace(/'/g, "&apos;")})'>Access Pass</button>
               <button class="btn btn-danger btn-sm" onclick="cancelBooking(${b.id})">Cancel</button>
             </div>
           ` : ''}
@@ -914,20 +918,20 @@ function renderDashTab(tab) {
   if (tab === 'space-bookings') {
     const bookings = window._dashData?.spaceBookings || [];
     if (bookings.length === 0) {
-      content.innerHTML = `<div class="empty-state"><div class="icon">📋</div><h3>No bookings on your spaces</h3><p>List a spot and wait for bookings!</p></div>`;
+      content.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--slate-400);"><p>No incoming reservation activity recorded on your spaces.</p></div>`;
       return;
     }
     content.innerHTML = bookings.map(b => `
-      <div class="booking-item">
-        <div class="booking-info">
+      <div class="ledger-item">
+        <div class="ledger-main">
           <h4>${b.title}</h4>
-          <p>🧑 Renter: ${b.renter_name} · 📞 ${b.renter_phone}</p>
-          <p>📅 ${b.booking_date} · 🕐 ${formatTime(b.start_time)} - ${formatTime(b.end_time)} (${b.hours}h)</p>
+          <div class="sub">Commuter: ${b.renter_name} &bull; Phone: ${b.renter_phone}</div>
+          <div class="sub" style="margin-top:2px;">Date: ${b.booking_date} (${formatTime(b.start_time)} &ndash; ${formatTime(b.end_time)}, ${b.hours} hrs)</div>
         </div>
-        <div class="booking-meta">
-          <div class="amount" style="color:var(--success);">+₹${b.owner_payout}</div>
-          <div style="font-size:11px;color:var(--gray-400);">Commission: ₹${b.commission}</div>
-          <span class="status-badge status-${b.status}">${b.status}</span>
+        <div style="text-align:right;">
+          <div class="ledger-amount" style="color:var(--status-success-text);">+₹${b.owner_payout}</div>
+          <div style="font-size:11px;color:var(--slate-400);">Fee: ₹${b.commission}</div>
+          <span class="badge badge-${b.status}">${b.status}</span>
         </div>
       </div>
     `).join('');
@@ -936,23 +940,23 @@ function renderDashTab(tab) {
   if (tab === 'my-spaces') {
     const spaces = window._dashData?.spaces || [];
     if (spaces.length === 0) {
-      content.innerHTML = `<div class="empty-state"><div class="icon">🅿️</div><h3>No spots listed</h3><p>Start earning by listing your parking!</p><button class="btn btn-primary" onclick="navigate('list-space')">List a Spot</button></div>`;
+      content.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--slate-400);"><p>No parking spaces registered yet.</p><button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="navigate('list-space')">Register a Bay</button></div>`;
       return;
     }
     content.innerHTML = `<div class="card-grid">${spaces.map(s => `
-      <div class="card" style="padding:24px;">
-        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
-          <span class="area-tag">📍 ${s.area}</span>
-          <span class="status-badge ${s.is_active ? 'status-confirmed' : 'status-cancelled'}">${s.is_active ? 'Active' : 'Paused'}</span>
+      <div class="space-card" style="padding:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+          <span class="space-locality-tag">${s.area}</span>
+          <span class="badge ${s.is_active ? 'badge-confirmed' : 'badge-cancelled'}">${s.is_active ? 'Active Bay' : 'Suspended'}</span>
         </div>
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">${s.title}</h3>
-        <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px;">${s.address}</p>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:20px;font-weight:800;color:var(--primary);">₹${s.price_per_hour}/hr</span>
-          <span style="font-size:13px;color:var(--gray-500);">${s.total_bookings} bookings</span>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">${s.title}</h3>
+        <p style="font-size:12px;color:var(--slate-500);margin-bottom:14px;">${s.address}</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--slate-100);">
+          <span class="mono" style="font-size:18px;font-weight:700;color:var(--slate-900);">₹${s.price_per_hour}/hr</span>
+          <span style="font-size:12px;color:var(--slate-500);">${s.total_bookings} Bookings Cleared</span>
         </div>
-        <button class="btn ${s.is_active ? 'btn-secondary' : 'btn-success'} btn-sm" style="width:100%;margin-top:12px;" onclick="toggleSpace(${s.id})">
-          ${s.is_active ? '⏸️ Pause Listing' : '▶️ Activate'}
+        <button class="btn ${s.is_active ? 'btn-secondary' : 'btn-dark'} btn-sm" style="width:100%;margin-top:14px;" onclick="toggleSpace(${s.id})">
+          ${s.is_active ? 'Suspend Availability' : 'Activate Space'}
         </button>
       </div>
     `).join('')}</div>`;
@@ -960,14 +964,14 @@ function renderDashTab(tab) {
 }
 
 async function cancelBooking(id) {
-  if (!confirm('Cancel this booking?')) return;
+  if (!confirm('Cancel this reservation?')) return;
   try {
     const res = await apiFetch(`/api/bookings/${id}/cancel`, {
       method: 'PUT',
       headers: authHeaders()
     });
     if (res.ok) {
-      showToast('Booking cancelled', 'success');
+      showToast('Reservation cancelled', 'success');
       loadDashboard();
     } else {
       showToast(res.error || 'Failed to cancel', 'error');
@@ -984,7 +988,7 @@ async function toggleSpace(id) {
       headers: authHeaders()
     });
     if (res.ok && res.data) {
-      showToast(res.data.message || 'Updated', 'success');
+      showToast(res.data.message || 'Status updated', 'success');
       loadDashboard();
     } else {
       showToast(res.error || 'Failed to update', 'error');
@@ -994,7 +998,7 @@ async function toggleSpace(id) {
   }
 }
 
-// ==================== ADMIN ====================
+// ==================== PLATFORM CLEARING & ADMIN ====================
 
 async function loadAdmin() {
   try {
@@ -1002,84 +1006,66 @@ async function loadAdmin() {
     if (!res.ok || !res.data) return;
     const data = res.data;
 
-    // Stats
     document.getElementById('adminStats').innerHTML = `
       <div class="stat-card">
-        <div class="stat-icon purple">👥</div>
-        <h3>${data.totalUsers}</h3>
-        <p>Registered Users</p>
+        <div class="stat-label">Registered Accounts</div>
+        <div class="stat-value">${data.totalUsers}</div>
+        <div class="stat-footer">Verified users & hosts</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon green">🅿️</div>
-        <h3>${data.totalSpaces}</h3>
-        <p>Active Spots</p>
+        <div class="stat-label">Active Space Inventory</div>
+        <div class="stat-value">${data.totalSpaces}</div>
+        <div class="stat-footer">Allocated parking bays</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon orange">📋</div>
-        <h3>${data.totalBookings}</h3>
-        <p>Total Bookings</p>
+        <div class="stat-label">Gross Merchandise Volume (GMV)</div>
+        <div class="stat-value mono">₹${data.revenue?.total_revenue || 0}</div>
+        <div class="stat-footer">Total platform volume</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon blue">💰</div>
-        <h3>₹${data.revenue?.total_commission || 0}</h3>
-        <p>Platform Commission (15%)</p>
+        <div class="stat-label">Platform Yield (15% Commission)</div>
+        <div class="stat-value mono" style="color:var(--brand-accent);">₹${data.revenue?.total_commission || 0}</div>
+        <div class="stat-footer">Net platform revenue</div>
       </div>
     `;
 
-    // Additional revenue stats
-    document.getElementById('adminStats').innerHTML += `
-      <div class="stat-card">
-        <div class="stat-icon green">📈</div>
-        <h3>₹${data.revenue?.total_revenue || 0}</h3>
-        <p>Total Revenue (GMV)</p>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon orange">💸</div>
-        <h3>₹${data.revenue?.total_payouts || 0}</h3>
-        <p>Owner Payouts</p>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon purple">📊</div>
-        <h3>₹${Math.round(data.revenue?.avg_booking_value || 0)}</h3>
-        <p>Avg. Booking Value</p>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon blue">📱</div>
-        <h3>15%</h3>
-        <p>Commission Rate</p>
-      </div>
-    `;
-
-    // Area breakdown
     const maxRevenue = Math.max(...data.areaBreakdown.map(a => a.revenue || 0), 1);
-    document.getElementById('areaAnalytics').innerHTML = `
-      <h3>Revenue by Area</h3>
-      ${data.areaBreakdown.map(a => `
-        <div class="area-bar">
-          <span class="label">${a.area}</span>
-          <div class="bar">
-            <div class="bar-fill" style="width:${((a.revenue || 0) / maxRevenue * 100)}%">₹${a.revenue || 0}</div>
-          </div>
-          <span style="font-size:12px;color:var(--gray-500);width:80px;text-align:right;">${a.bookings} bookings</span>
+    const areaEl = document.getElementById('areaAnalytics');
+    if (areaEl) {
+      areaEl.innerHTML = `
+        <h3 style="font-size:15px;font-weight:700;color:var(--slate-900);margin-bottom:14px;">Sector Gross Revenue Distribution</h3>
+        <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:20px;">
+          ${data.areaBreakdown.map(a => `
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+              <span style="width:140px;font-size:13px;font-weight:600;color:var(--slate-700);">${a.area}</span>
+              <div style="flex:1;height:24px;background:var(--slate-100);border-radius:4px;overflow:hidden;">
+                <div style="height:100%;background:var(--slate-900);border-radius:4px;display:flex;align-items:center;padding-left:10px;font-size:11px;font-weight:600;color:white;width:${((a.revenue || 0) / maxRevenue * 100)}%;">
+                  ₹${a.revenue || 0}
+                </div>
+              </div>
+              <span style="font-size:12px;color:var(--slate-500);width:90px;text-align:right;">${a.bookings} txs</span>
+            </div>
+          `).join('')}
         </div>
-      `).join('')}
-    `;
+      `;
+    }
 
-    // Recent bookings table
     const tbody = document.querySelector('#adminBookings tbody');
-    tbody.innerHTML = data.recentBookings.map(b => `
-      <tr>
-        <td>#${b.id}</td>
-        <td>${b.title}</td>
-        <td>${b.renter_name}</td>
-        <td>${b.owner_name}</td>
-        <td>${b.booking_date}</td>
-        <td>${b.hours}h</td>
-        <td style="font-weight:600;">₹${b.total_amount}</td>
-        <td style="color:var(--success);font-weight:600;">₹${b.commission}</td>
-        <td><span class="status-badge status-${b.status}">${b.status}</span></td>
-      </tr>
-    `).join('');
+    if (tbody) {
+      tbody.innerHTML = data.recentBookings.map(b => `
+        <tr>
+          <td class="mono" style="font-size:12px;font-weight:600;">#TX-${1000 + b.id}</td>
+          <td>${b.title} <span style="font-size:11px;color:var(--slate-400);">(${b.area})</span></td>
+          <td>${b.renter_name}</td>
+          <td>${b.owner_name}</td>
+          <td>${b.booking_date}</td>
+          <td>${b.hours} hrs</td>
+          <td class="mono" style="font-weight:600;">₹${b.total_amount}</td>
+          <td class="mono" style="color:var(--brand-accent);font-weight:600;">₹${b.commission}</td>
+          <td><span class="badge badge-${b.status}">${b.status}</span></td>
+        </tr>
+      `).join('');
+    }
   } catch (e) {
     console.error('Failed to load admin:', e);
   }
@@ -1100,10 +1086,6 @@ function closeModal(e) {
   if (e.target.classList.contains('modal-overlay')) {
     e.target.style.display = 'none';
   }
-}
-
-function closeBookingModal() {
-  document.getElementById('bookingModal').style.display = 'none';
 }
 
 function showToast(message, type = '') {

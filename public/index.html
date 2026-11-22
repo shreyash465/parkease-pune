@@ -3,251 +3,286 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ParkEase Pune — Rent Parking, Earn Money</title>
+  <title>ParkEase — Decentralized Urban Parking Network</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🅿️</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F172A'/><text x='50%' y='68%' font-size='56' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'>P</text></svg>">
 </head>
 <body>
 
   <!-- ===== NAVBAR ===== -->
   <nav class="navbar">
     <div class="nav-brand" onclick="navigate('home')">
-      <div class="logo">P</div>
-      <div>
-        <span>ParkEase</span>
-        <div class="city">PUNE</div>
-      </div>
+      <div class="brand-icon">P</div>
+      <div class="brand-title">ParkEase</div>
+      <div class="brand-badge">Pune Network</div>
     </div>
     <div class="nav-links" id="navLinks">
-      <!-- Dynamic nav links -->
+      <!-- Dynamic navigation links generated via JS -->
     </div>
   </nav>
 
-  <!-- ===== HOME PAGE ===== -->
+  <!-- ===== HOME / DISCOVERY PAGE ===== -->
   <div id="page-home" class="page active">
     <section class="hero">
-      <div class="hero-content">
-        <div class="hero-text">
-          <h1>Your Parking, <span>Their Solution.</span></h1>
-          <p>Going to office? Rent out your empty parking spot to someone who needs it. Earn ₹400-800/day while your car is parked at work. It's the Airbnb of parking — made for Pune.</p>
-          <div style="display:flex; gap:12px; flex-wrap:wrap;">
-            <button class="btn btn-orange btn-lg" onclick="navigate('search')">🔍 Find Parking</button>
-            <button class="btn btn-lg" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="showAuthModal('register')">🅿️ List Your Spot</button>
+      <div class="container">
+        <div class="hero-grid">
+          <div>
+            <div class="hero-tag">
+              <span class="dot"></span> Real-Time Urban Parking Asset Exchange
+            </div>
+            <h1>Decentralized private parking for Pune.</h1>
+            <p>Monetize designated society parking bays during work hours. Provide verified commuters with guaranteed, gated parking in high-density commercial corridors.</p>
+            
+            <div class="hero-actions">
+              <button class="btn btn-primary btn-lg" onclick="navigate('search')">Find Parking Spaces</button>
+              <button class="btn btn-secondary btn-lg" onclick="showAuthModal('register')">List a Private Space</button>
+            </div>
+
+            <div class="hero-metrics">
+              <div>
+                <div class="hero-metric-val">500+</div>
+                <div class="hero-metric-lbl">Allocated Bays</div>
+              </div>
+              <div>
+                <div class="hero-metric-val">8</div>
+                <div class="hero-metric-lbl">Key Commercial Hubs</div>
+              </div>
+              <div>
+                <div class="hero-metric-val">15%</div>
+                <div class="hero-metric-lbl">Platform Commission</div>
+              </div>
+            </div>
           </div>
-          <div class="hero-stats">
-            <div class="hero-stat">
-              <h3>500+</h3>
-              <p>Parking Spots</p>
+
+          <div class="hero-preview-panel">
+            <div class="preview-header">
+              <div class="preview-title">Benchmark Yield by Sector</div>
+              <span style="font-size:11px;color:#94A3B8;">Hourly Gross</span>
             </div>
-            <div class="hero-stat">
-              <h3>8</h3>
-              <p>Pune Areas</p>
+            <div class="preview-row">
+              <span class="locality">Viman Nagar (Phoenix Corridor)</span>
+              <span class="rate">₹100/hr</span>
             </div>
-            <div class="hero-stat">
-              <h3>₹25</h3>
-              <p>Starting Price/hr</p>
+            <div class="preview-row">
+              <span class="locality">Koregaon Park (North Main Rd)</span>
+              <span class="rate">₹80/hr</span>
             </div>
-          </div>
-        </div>
-        <div class="hero-visual">
-          <div class="hero-card">
-            <h3>💰 How hosts earn</h3>
-            <div style="margin-bottom:16px;">
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;color:rgba(255,255,255,0.7)"><span>Koregaon Park</span><span style="color:#F97316;font-weight:700">₹80/hr</span></div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;color:rgba(255,255,255,0.7)"><span>Viman Nagar</span><span style="color:#F97316;font-weight:700">₹100/hr</span></div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;color:rgba(255,255,255,0.7)"><span>FC Road</span><span style="color:#F97316;font-weight:700">₹60/hr</span></div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;color:rgba(255,255,255,0.7)"><span>Hinjewadi (Bike)</span><span style="color:#F97316;font-weight:700">₹30/hr</span></div>
+            <div class="preview-row">
+              <span class="locality">FC Road / Deccan Gymkhana</span>
+              <span class="rate">₹60/hr</span>
             </div>
-            <div style="background:rgba(249,115,22,0.15);border-radius:12px;padding:16px;text-align:center;">
-              <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:4px;">Avg. daily earning (8 hrs)</div>
-              <div style="font-size:28px;font-weight:800;color:#F97316;">₹560</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;">After 15% platform commission</div>
+            <div class="preview-row">
+              <span class="locality">Hinjewadi Tech Corridor (Ph 1)</span>
+              <span class="rate">₹30/hr</span>
+            </div>
+
+            <div class="preview-summary-box">
+              <div class="label">Projected Average Host Monthly Net Yield</div>
+              <div class="val">₹14,280</div>
+              <div style="font-size:11px;color:#94A3B8;margin-top:4px;">Based on 22 working days, 8-hour daily occupancy</div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Search Box -->
+    <!-- Search Controls -->
     <div class="container">
-      <div class="search-box">
-        <div class="search-row">
-          <div class="field">
-            <label>📍 Area in Pune</label>
-            <select id="searchArea">
-              <option value="">All Areas</option>
+      <div class="search-card">
+        <div class="search-form-row">
+          <div>
+            <label class="field-label">Locality / Sector</label>
+            <select id="searchArea" class="form-control">
+              <option value="">All Locality Hubs</option>
             </select>
           </div>
-          <div class="field">
-            <label>🚗 Vehicle Type</label>
-            <select id="searchVehicle">
-              <option value="">All Vehicles</option>
-              <option value="car">🚗 Car</option>
-              <option value="bike">🏍️ Bike / Scooter</option>
+          <div>
+            <label class="field-label">Vehicle Classification</label>
+            <select id="searchVehicle" class="form-control">
+              <option value="">All Vehicle Classes</option>
+              <option value="car">Four-Wheeler (Sedan / SUV)</option>
+              <option value="bike">Two-Wheeler (EV / Scooter)</option>
             </select>
           </div>
-          <div class="field">
-            <label>📅 Date</label>
-            <input type="date" id="searchDate" value="">
+          <div>
+            <label class="field-label">Date of Reservation</label>
+            <input type="date" id="searchDate" class="form-control">
           </div>
-          <div class="field">
-            <label>💰 Max Price/hr</label>
-            <select id="searchMaxPrice">
-              <option value="">Any Price</option>
-              <option value="30">Up to ₹30</option>
-              <option value="50">Up to ₹50</option>
-              <option value="80">Up to ₹80</option>
-              <option value="100">Up to ₹100</option>
+          <div>
+            <label class="field-label">Price Ceiling</label>
+            <select id="searchMaxPrice" class="form-control">
+              <option value="">Any Tariff</option>
+              <option value="30">Up to ₹30/hr</option>
+              <option value="60">Up to ₹60/hr</option>
+              <option value="100">Up to ₹100/hr</option>
             </select>
           </div>
-          <button class="btn btn-primary btn-lg" onclick="searchSpaces()" style="white-space:nowrap;">Search</button>
+          <div>
+            <button class="btn btn-dark" style="height:42px;padding:0 24px;" onclick="searchSpaces()">Search Inventory</button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- How It Works -->
-    <section class="how-it-works">
+    <!-- How the Platform Works -->
+    <section style="padding:80px 0 60px;">
       <div class="container">
-        <div style="text-align:center;">
-          <h2 style="font-size:32px;font-weight:800;color:var(--gray-900);">How ParkEase Works</h2>
-          <p style="color:var(--gray-500);margin-top:8px;font-size:16px;">Simple. Safe. Smart.</p>
+        <div style="margin-bottom:48px;">
+          <h2 style="font-size:24px;font-weight:800;color:var(--slate-900);letter-spacing:-0.02em;">Infrastructure Architecture</h2>
+          <p style="color:var(--slate-500);font-size:14px;margin-top:4px;">Seamless protocol between society hosts and verified commuters.</p>
         </div>
-        <div class="steps-grid">
-          <div class="step">
-            <div class="step-number">1</div>
-            <h3>List Your Spot</h3>
-            <p>Going to office? List your empty parking with timing, price & location</p>
+
+        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:24px;">
+          <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:24px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--brand-accent);margin-bottom:12px;">01 / ALLOCATION</div>
+            <h3 style="font-size:15px;font-weight:700;color:var(--slate-900);margin-bottom:8px;">Space Tokenization</h3>
+            <p style="font-size:13px;color:var(--slate-600);line-height:1.6;">Hosts register designated society parking slots, setting daily availability windows and hourly tariffs.</p>
           </div>
-          <div class="step">
-            <div class="step-number">2</div>
-            <h3>Someone Books</h3>
-            <p>A nearby person searching for parking books your spot and pays online</p>
+
+          <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:24px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--brand-accent);margin-bottom:12px;">02 / DISCOVERY</div>
+            <h3 style="font-size:15px;font-weight:700;color:var(--slate-900);margin-bottom:8px;">Geospatial Search</h3>
+            <p style="font-size:13px;color:var(--slate-600);line-height:1.6;">Commuters locate guaranteed parking on the interactive OpenStreetMap with transparent pricing.</p>
           </div>
-          <div class="step">
-            <div class="step-number">3</div>
-            <h3>They Park</h3>
-            <p>The renter gets directions and parks their vehicle in your spot</p>
+
+          <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:24px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--brand-accent);margin-bottom:12px;">03 / ACCESS GATE</div>
+            <h3 style="font-size:15px;font-weight:700;color:var(--slate-900);margin-bottom:8px;">Verified Security Pass</h3>
+            <p style="font-size:13px;color:var(--slate-600);line-height:1.6;">Instant QR pass issued with vehicle license number for seamless verification by society guards.</p>
           </div>
-          <div class="step">
-            <div class="step-number">4</div>
-            <h3>You Earn</h3>
-            <p>Money gets deposited after the booking. We keep just 15% commission</p>
+
+          <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:24px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--brand-accent);margin-bottom:12px;">04 / CLEARING</div>
+            <h3 style="font-size:15px;font-weight:700;color:var(--slate-900);margin-bottom:8px;">Automated Settlement</h3>
+            <p style="font-size:13px;color:var(--slate-600);line-height:1.6;">85% net yield cleared to host account; 15% platform commission automatically retained.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Popular Areas -->
-    <section style="padding:60px 0;">
+    <!-- Sector Breakdown -->
+    <section style="padding:0 0 80px;">
       <div class="container">
-        <div style="text-align:center;margin-bottom:32px;">
-          <h2 style="font-size:28px;font-weight:800;color:var(--gray-900);">Popular Areas in Pune</h2>
-          <p style="color:var(--gray-500);margin-top:8px;">Find parking near offices, malls & public places</p>
+        <div style="margin-bottom:32px;">
+          <h2 style="font-size:20px;font-weight:700;color:var(--slate-900);letter-spacing:-0.02em;">Supported Sectors & Zones</h2>
         </div>
-        <div class="areas-grid" id="areasGrid">
-          <!-- Dynamic -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:16px;" id="areasGrid">
+          <!-- Dynamic areas populated via JS -->
         </div>
       </div>
     </section>
 
-    <!-- Footer -->
+    <!-- Professional Footer -->
     <footer class="footer">
-      <div class="footer-content">
-        <div>
-          <h4>🅿️ ParkEase Pune</h4>
-          <p>India's first peer-to-peer parking marketplace.<br>Making Pune's parking smarter, one spot at a time.</p>
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <div class="brand-icon" style="width:24px;height:24px;font-size:12px;">P</div>
+              <span style="font-weight:700;color:var(--slate-900);">ParkEase Pune</span>
+            </div>
+            <p style="font-size:13px;line-height:1.6;color:var(--slate-500);max-width:320px;">
+              Urban mobility infrastructure enabling peer-to-peer parking reservations across residential housing societies in Pune.
+            </p>
+          </div>
+          <div>
+            <h4>Platform</h4>
+            <a href="#" onclick="navigate('search')">Space Inventory</a>
+            <a href="#" onclick="navigate('list-space')">Host Asset Registration</a>
+            <a href="#" onclick="navigate('dashboard')">User Dashboard</a>
+            <a href="#" onclick="navigate('admin')">Platform Clearing</a>
+          </div>
+          <div>
+            <h4>Prime Sectors</h4>
+            <a href="#">Koregaon Park Sector 1-5</a>
+            <a href="#">Viman Nagar Commercial</a>
+            <a href="#">FC Road / Deccan Corridor</a>
+            <a href="#">Hinjewadi IT Phase 1-3</a>
+          </div>
+          <div>
+            <h4>Security & Policy</h4>
+            <a href="#">Society Verification Protocol</a>
+            <a href="#">Gate Access Policy</a>
+            <a href="#">Host Indemnity Terms</a>
+            <a href="#">Support: ops@aenrox.com</a>
+          </div>
         </div>
-        <div>
-          <h4>Quick Links</h4>
-          <a href="#" onclick="navigate('search')">Find Parking</a>
-          <a href="#" onclick="navigate('list-space')">List Your Spot</a>
-          <a href="#" onclick="navigate('admin')">Admin Dashboard</a>
+        <div class="footer-copy">
+          <span>&copy; 2026 ParkEase Mobility Network. Built for Pune Urban Corridor.</span>
+          <span>Environment: Production | Edge: Cloudflare (BOM)</span>
         </div>
-        <div>
-          <h4>Pune Hotspots</h4>
-          <a href="#">Koregaon Park</a>
-          <a href="#">FC Road</a>
-          <a href="#">Viman Nagar</a>
-          <a href="#">Hinjewadi</a>
-        </div>
-        <div>
-          <h4>Contact</h4>
-          <p>📧 hello@parkease.in</p>
-          <p>📞 +91 98765 43210</p>
-          <p>📍 Pune, Maharashtra</p>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <p>© 2026 ParkEase Pune. All rights reserved. | Prototype v1.0</p>
       </div>
     </footer>
   </div>
 
-  <!-- ===== SEARCH / RESULTS PAGE ===== -->
+  <!-- ===== SEARCH INVENTORY / MAP VIEW ===== -->
   <div id="page-search" class="page">
     <div class="container page-content">
       <div class="section-header">
         <div>
-          <h2>Available Parking Spots</h2>
-          <p style="color:var(--gray-500);font-size:14px;" id="resultCount"></p>
+          <h2>Available Parking Inventory</h2>
+          <p style="color:var(--slate-500);font-size:13px;" id="resultCount"></p>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <div style="display:inline-flex;background:var(--gray-200);border-radius:8px;padding:3px;">
-            <button id="viewListBtn" class="btn btn-sm btn-secondary active" style="border:none;" onclick="toggleSearchView('list')">📋 Cards</button>
-            <button id="viewMapBtn" class="btn btn-sm btn-secondary" style="border:none;" onclick="toggleSearchView('map')">🗺️ Pune Map</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:inline-flex;background:var(--slate-200);border-radius:var(--radius);padding:2px;">
+            <button id="viewListBtn" class="btn btn-sm btn-secondary active" style="border:none;" onclick="toggleSearchView('list')">List View</button>
+            <button id="viewMapBtn" class="btn btn-sm btn-secondary" style="border:none;" onclick="toggleSearchView('map')">Geospatial Map</button>
           </div>
-          <select id="filterArea" onchange="loadSpaces()" style="padding:10px 16px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;">
-            <option value="">All Areas</option>
+          <select id="filterArea" onchange="loadSpaces()" class="form-control" style="width:160px;height:34px;font-size:12px;">
+            <option value="">All Localities</option>
           </select>
-          <select id="filterVehicle" onchange="loadSpaces()" style="padding:10px 16px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;">
+          <select id="filterVehicle" onchange="loadSpaces()" class="form-control" style="width:140px;height:34px;font-size:12px;">
             <option value="">All Vehicles</option>
-            <option value="car">🚗 Car</option>
-            <option value="bike">🏍️ Bike</option>
+            <option value="car">Four-Wheeler</option>
+            <option value="bike">Two-Wheeler</option>
           </select>
         </div>
       </div>
 
-      <!-- Map View Container -->
-      <div id="mapContainer" style="display:none;margin-bottom:24px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--gray-200);box-shadow:var(--shadow-md);">
+      <!-- Geospatial Pune Map -->
+      <div id="mapContainer" style="display:none;margin-bottom:24px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--slate-200);box-shadow:var(--shadow-sm);">
         <div id="puneMap" style="height:420px;width:100%;z-index:10;"></div>
       </div>
 
       <div class="card-grid" id="spacesGrid">
-        <!-- Dynamic -->
+        <!-- Dynamic cards -->
       </div>
     </div>
   </div>
 
-  <!-- ===== SPACE DETAIL PAGE ===== -->
+  <!-- ===== ASSET DETAIL & BOOKING ===== -->
   <div id="page-detail" class="page">
     <div class="container page-content">
-      <button class="back-btn" onclick="navigate('search')">← Back to search</button>
-      <div class="detail-grid" id="detailContent">
-        <!-- Dynamic -->
+      <button class="btn btn-secondary btn-sm" style="margin-bottom:20px;" onclick="navigate('search')">&larr; Back to Inventory</button>
+      <div style="display:grid;grid-template-columns:1.3fr 0.7fr;gap:32px;" id="detailContent">
+        <!-- Dynamic detail content -->
       </div>
     </div>
   </div>
 
-  <!-- ===== LIST SPACE PAGE ===== -->
+  <!-- ===== LIST ASSET (HOST WORKFLOW) ===== -->
   <div id="page-list-space" class="page">
     <div class="container page-content">
       <div style="max-width:640px;margin:0 auto;">
-        <h2 style="font-size:28px;font-weight:800;margin-bottom:8px;">List Your Parking Spot</h2>
-        <p style="color:var(--gray-500);margin-bottom:32px;">Start earning from your empty parking when you're at work</p>
+        <div style="margin-bottom:24px;">
+          <h2 style="font-size:24px;font-weight:800;color:var(--slate-900);letter-spacing:-0.02em;">Register Parking Space</h2>
+          <p style="color:var(--slate-500);font-size:14px;margin-top:4px;">Monetize idle parking space during office hours in your housing society.</p>
+        </div>
 
-        <div class="card" style="padding:32px;">
+        <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:32px;box-shadow:var(--shadow-sm);">
           <form id="listSpaceForm" onsubmit="submitSpace(event)">
-            <div class="form-group">
-              <label>Title *</label>
-              <input type="text" placeholder="e.g., Covered Car Parking - Koregaon Park" required id="spTitle">
+            <div style="margin-bottom:16px;">
+              <label class="field-label">Space Title</label>
+              <input type="text" class="form-control" placeholder="e.g. Covered Bay - Marvel Alura, Koregaon Park" required id="spTitle">
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Area *</label>
-                <select required id="spArea">
-                  <option value="">Select Area</option>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+              <div>
+                <label class="field-label">Locality / Sector</label>
+                <select required id="spArea" class="form-control">
+                  <option value="">Select Sector</option>
                   <option>Koregaon Park</option>
                   <option>FC Road</option>
                   <option>Hinjewadi</option>
@@ -259,69 +294,69 @@
                   <option>Aundh</option>
                   <option>Wakad</option>
                   <option>Hadapsar</option>
-                  <option>Pimpri</option>
-                  <option>Chinchwad</option>
                   <option>Kalyani Nagar</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Landmark</label>
-                <input type="text" placeholder="Nearby landmark" id="spLandmark">
+              <div>
+                <label class="field-label">Prominent Landmark</label>
+                <input type="text" class="form-control" placeholder="Near Osho / Phoenix Mall" id="spLandmark">
               </div>
             </div>
-            <div class="form-group">
-              <label>Full Address *</label>
-              <input type="text" placeholder="Society name, lane, area" required id="spAddress">
+
+            <div style="margin-bottom:16px;">
+              <label class="field-label">Complete Society Address & Unit Identifier</label>
+              <input type="text" class="form-control" placeholder="Society name, Wing, Bay Number" required id="spAddress">
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Vehicle Type *</label>
-                <select required id="spVehicle">
-                  <option value="car">🚗 Car</option>
-                  <option value="bike">🏍️ Bike / Scooter</option>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+              <div>
+                <label class="field-label">Vehicle Classification</label>
+                <select required id="spVehicle" class="form-control">
+                  <option value="car">Four-Wheeler (Sedan / SUV)</option>
+                  <option value="bike">Two-Wheeler (EV / Bike)</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Price per Hour (₹) *</label>
-                <input type="number" min="10" max="500" placeholder="e.g., 80" required id="spPrice">
+              <div>
+                <label class="field-label">Hourly Tariff (₹ INR)</label>
+                <input type="number" min="10" max="500" class="form-control" placeholder="80" required id="spPrice">
               </div>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Available From *</label>
-                <input type="time" required id="spFrom" value="09:00">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+              <div>
+                <label class="field-label">Available Window Start</label>
+                <input type="time" required id="spFrom" class="form-control" value="09:00">
               </div>
-              <div class="form-group">
-                <label>Available Until *</label>
-                <input type="time" required id="spTo" value="18:00">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Available Days</label>
-              <div class="checkbox-group" id="spDays">
-                <label class="checkbox-label"><input type="checkbox" value="Mon" checked> Mon</label>
-                <label class="checkbox-label"><input type="checkbox" value="Tue" checked> Tue</label>
-                <label class="checkbox-label"><input type="checkbox" value="Wed" checked> Wed</label>
-                <label class="checkbox-label"><input type="checkbox" value="Thu" checked> Thu</label>
-                <label class="checkbox-label"><input type="checkbox" value="Fri" checked> Fri</label>
-                <label class="checkbox-label"><input type="checkbox" value="Sat"> Sat</label>
-                <label class="checkbox-label"><input type="checkbox" value="Sun"> Sun</label>
+              <div>
+                <label class="field-label">Available Window End</label>
+                <input type="time" required id="spTo" class="form-control" value="18:00">
               </div>
             </div>
-            <div class="form-group">
-              <label>Description</label>
-              <textarea rows="3" placeholder="Tell renters about your parking spot..." id="spDesc" style="width:100%;padding:11px 16px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;"></textarea>
-            </div>
-            <div class="form-group">
-              <label>Amenities</label>
-              <div class="checkbox-group">
-                <label class="checkbox-label"><input type="checkbox" id="spCovered"> 🏠 Covered</label>
-                <label class="checkbox-label"><input type="checkbox" id="spCCTV"> 📹 CCTV</label>
-                <label class="checkbox-label"><input type="checkbox" id="spGuard"> 👮 Security Guard</label>
+
+            <div style="margin-bottom:16px;">
+              <label class="field-label">Recurring Days</label>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;" id="spDays">
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" value="Mon" checked> Mon</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" value="Tue" checked> Tue</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" value="Wed" checked> Wed</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" value="Thu" checked> Thu</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" value="Fri" checked> Fri</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" value="Sat"> Sat</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" value="Sun"> Sun</label>
               </div>
             </div>
-            <div style="display:flex;gap:12px;margin-top:24px;">
-              <button type="submit" class="btn btn-primary btn-lg" style="flex:1;">🅿️ List My Spot</button>
+
+            <div style="margin-bottom:16px;">
+              <label class="field-label">Security & Access Amenities</label>
+              <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;">
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="spCovered"> Covered Bay</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="spCCTV"> CCTV Surveillance</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="spGuard"> Gate Security Personnel</label>
+              </div>
+            </div>
+
+            <div style="margin-top:24px;">
+              <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Complete Registration & List Asset</button>
             </div>
           </form>
         </div>
@@ -329,56 +364,63 @@
     </div>
   </div>
 
-  <!-- ===== DASHBOARD PAGE ===== -->
+  <!-- ===== EXECUTIVE DASHBOARD ===== -->
   <div id="page-dashboard" class="page">
     <div class="container page-content">
-      <h2 style="font-size:28px;font-weight:800;margin-bottom:24px;">My Dashboard</h2>
-
-      <div class="stats-grid" id="dashStats">
-        <!-- Dynamic -->
+      <div style="margin-bottom:28px;">
+        <h2 style="font-size:24px;font-weight:800;color:var(--slate-900);letter-spacing:-0.02em;">Account & Asset Dashboard</h2>
+        <p style="color:var(--slate-500);font-size:13px;margin-top:2px;">Real-time overview of active reservations, host earnings, and security credentials.</p>
       </div>
 
-      <div class="tabs">
-        <button class="tab active" onclick="switchDashTab('my-bookings', this)">🚗 My Bookings</button>
-        <button class="tab" onclick="switchDashTab('space-bookings', this)">📋 Space Bookings</button>
-        <button class="tab" onclick="switchDashTab('my-spaces', this)">🅿️ My Spaces</button>
+      <!-- KPI Executive Metrics -->
+      <div class="stats-grid" id="dashStats">
+        <!-- Dynamic KPI metrics -->
+      </div>
+
+      <!-- Ledger Navigation Tabs -->
+      <div class="tabs-header">
+        <button class="tab-btn active" onclick="switchDashTab('my-bookings', this)">Renter Reservations</button>
+        <button class="tab-btn" onclick="switchDashTab('space-bookings', this)">Host Inbound Bookings</button>
+        <button class="tab-btn" onclick="switchDashTab('my-spaces', this)">Registered Spaces</button>
       </div>
 
       <div id="dashContent">
-        <!-- Dynamic -->
+        <!-- Dynamic ledger content -->
       </div>
     </div>
   </div>
 
-  <!-- ===== ADMIN PAGE ===== -->
+  <!-- ===== PLATFORM CLEARING & ADMIN ===== -->
   <div id="page-admin" class="page">
     <div class="container page-content">
-      <h2 style="font-size:28px;font-weight:800;margin-bottom:8px;">📊 Admin Dashboard</h2>
-      <p style="color:var(--gray-500);margin-bottom:24px;">Platform analytics & commission tracking</p>
+      <div style="margin-bottom:28px;">
+        <h2 style="font-size:24px;font-weight:800;color:var(--slate-900);letter-spacing:-0.02em;">Platform Operations & Settlement</h2>
+        <p style="color:var(--slate-500);font-size:13px;margin-top:2px;">Consolidated gross merchandise volume (GMV) and commission ledger.</p>
+      </div>
 
       <div class="stats-grid" id="adminStats">
-        <!-- Dynamic -->
+        <!-- Admin summary metrics -->
       </div>
 
-      <div class="analytics-section" id="areaAnalytics">
-        <!-- Dynamic -->
+      <div style="margin-bottom:32px;" id="areaAnalytics">
+        <!-- Area distribution metrics -->
       </div>
 
-      <div class="analytics-section">
-        <h3>Recent Bookings</h3>
-        <div class="card" style="overflow-x:auto;">
+      <div style="margin-bottom:16px;">
+        <h3 style="font-size:16px;font-weight:700;color:var(--slate-900);margin-bottom:14px;">Recent Transaction Ledger</h3>
+        <div class="table-wrapper">
           <table id="adminBookings">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Spot</th>
+                <th>Tx ID</th>
+                <th>Space Identifier</th>
                 <th>Renter</th>
-                <th>Owner</th>
+                <th>Host</th>
                 <th>Date</th>
-                <th>Hours</th>
-                <th>Amount</th>
-                <th>Commission</th>
-                <th>Status</th>
+                <th>Duration</th>
+                <th>Gross (INR)</th>
+                <th>Commission (15%)</th>
+                <th>Settlement Status</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -388,52 +430,52 @@
     </div>
   </div>
 
-  <!-- ===== AUTH MODAL ===== -->
+  <!-- ===== AUTHENTICATION MODAL ===== -->
   <div class="modal-overlay" id="authModal" style="display:none;" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h2 id="authModalTitle">Login</h2>
-        <button class="modal-close" onclick="closeAuthModal()">✕</button>
+        <h2 id="authModalTitle">Sign In</h2>
+        <button class="modal-close" onclick="closeAuthModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="tabs">
-          <button class="tab active" id="tabLogin" onclick="switchAuthTab('login')">Login</button>
-          <button class="tab" id="tabRegister" onclick="switchAuthTab('register')">Register</button>
+        <div style="display:flex;gap:4px;background:var(--slate-100);padding:3px;border-radius:var(--radius-sm);margin-bottom:20px;">
+          <button class="tab-btn active" style="flex:1;text-align:center;padding:8px;" id="tabLogin" onclick="switchAuthTab('login')">Sign In</button>
+          <button class="tab-btn" style="flex:1;text-align:center;padding:8px;" id="tabRegister" onclick="switchAuthTab('register')">Create Account</button>
         </div>
 
         <!-- Login Form -->
         <form id="loginForm" onsubmit="handleLogin(event)">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="loginEmail" placeholder="your@email.com" required>
+          <div style="margin-bottom:14px;">
+            <label class="field-label">Email Address</label>
+            <input type="email" id="loginEmail" class="form-control" placeholder="name@company.com" required>
           </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="loginPass" placeholder="••••••••" required>
+          <div style="margin-bottom:18px;">
+            <label class="field-label">Password</label>
+            <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
           </div>
-          <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Login</button>
-          <div style="text-align:center;margin-top:16px;">
-            <p style="font-size:13px;color:var(--gray-400);">Demo: rahul@demo.com / demo123</p>
+          <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Sign In</button>
+          <div style="text-align:center;margin-top:14px;">
+            <span style="font-size:12px;color:var(--slate-400);">Demo Account: rahul@demo.com / demo123</span>
           </div>
         </form>
 
         <!-- Register Form -->
         <form id="registerForm" style="display:none;" onsubmit="handleRegister(event)">
-          <div class="form-group">
-            <label>Full Name</label>
-            <input type="text" id="regName" placeholder="Your name" required>
+          <div style="margin-bottom:14px;">
+            <label class="field-label">Full Name</label>
+            <input type="text" id="regName" class="form-control" placeholder="Rahul Sharma" required>
           </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="regEmail" placeholder="your@email.com" required>
+          <div style="margin-bottom:14px;">
+            <label class="field-label">Email Address</label>
+            <input type="email" id="regEmail" class="form-control" placeholder="rahul@domain.com" required>
           </div>
-          <div class="form-group">
-            <label>Phone Number</label>
-            <input type="tel" id="regPhone" placeholder="9876543210" required>
+          <div style="margin-bottom:14px;">
+            <label class="field-label">Mobile Phone Number</label>
+            <input type="tel" id="regPhone" class="form-control" placeholder="9876543210" required>
           </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="regPass" placeholder="Min. 6 characters" required minlength="6">
+          <div style="margin-bottom:18px;">
+            <label class="field-label">Account Password</label>
+            <input type="password" id="regPass" class="form-control" placeholder="Minimum 6 characters" required minlength="6">
           </div>
           <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Create Account</button>
         </form>
@@ -441,28 +483,15 @@
     </div>
   </div>
 
-  <!-- ===== BOOKING MODAL ===== -->
-  <div class="modal-overlay" id="bookingModal" style="display:none;" onclick="closeModal(event)">
-    <div class="modal" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h2>Confirm Booking</h2>
-        <button class="modal-close" onclick="closeBookingModal()">✕</button>
-      </div>
-      <div class="modal-body" id="bookingModalBody">
-        <!-- Dynamic -->
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== GATE PASS MODAL ===== -->
+  <!-- ===== CORPORATE ACCESS GATE PASS MODAL ===== -->
   <div class="modal-overlay" id="gatePassModal" style="display:none;" onclick="closeModal(event)">
     <div class="modal" style="max-width:440px;" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h2>🛡️ Society Gate Entry Pass</h2>
-        <button class="modal-close" onclick="closeGatePassModal()">✕</button>
+        <h2>Gate Security Authorization</h2>
+        <button class="modal-close" onclick="closeGatePassModal()">&times;</button>
       </div>
       <div class="modal-body" id="gatePassModalBody">
-        <!-- Dynamic Pass -->
+        <!-- Dynamic pass injected by JS -->
       </div>
     </div>
   </div>
@@ -471,11 +500,11 @@
   <div class="modal-overlay" id="paymentModal" style="display:none;" onclick="closeModal(event)">
     <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h2>💳 Pay & Confirm Booking</h2>
-        <button class="modal-close" onclick="closePaymentModal()">✕</button>
+        <h2>Order Summary & Settlement</h2>
+        <button class="modal-close" onclick="closePaymentModal()">&times;</button>
       </div>
       <div class="modal-body" id="paymentModalBody">
-        <!-- Dynamic Payment Details -->
+        <!-- Dynamic payment view -->
       </div>
     </div>
   </div>
