@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ParkEase — Decentralized Urban Parking Network</title>
-  <link rel="stylesheet" href="/css/style.css?v=20261122_3">
+  <link rel="stylesheet" href="/css/style.css?v=20261122_4">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F172A'/><text x='50%' y='68%' font-size='56' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'>P</text></svg>">
@@ -424,7 +424,51 @@
         <!-- Area distribution metrics -->
       </div>
 
-      <div style="margin-bottom:16px;">
+      <!-- Admin Direct Dispatcher (Zero Payment / Complimentary Booking) -->
+        <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:24px;margin-bottom:32px;box-shadow:var(--shadow-sm);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--brand-accent);text-transform:uppercase;letter-spacing:0.06em;">Admin Control Center</div>
+              <h3 style="font-size:18px;font-weight:800;color:var(--slate-900);margin-top:2px;">Direct Dispatch & Test Booking (₹0 Bypass)</h3>
+              <p style="font-size:13px;color:var(--slate-500);margin-top:2px;">Simulate or test instant reservations across any private bay in Pune without payment.</p>
+            </div>
+            <span class="badge badge-confirmed" style="font-size:11px;padding:6px 12px;">⚡ Payment Bypass Engine</span>
+          </div>
+
+          <form id="adminDispatchForm" onsubmit="submitAdminDispatch(event)">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;align-items:end;">
+              <div style="grid-column: span 2;">
+                <label class="field-label">Target Parking Bay</label>
+                <select id="adminSpaceSelect" class="form-control" required style="font-size:13px;">
+                  <option value="">Select Target Bay...</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label">Date</label>
+                <input type="date" id="adminBookDate" class="form-control" required style="font-size:13px;">
+              </div>
+              <div>
+                <label class="field-label">Start Time</label>
+                <input type="time" id="adminBookStart" class="form-control" value="10:00" required style="font-size:13px;">
+              </div>
+              <div>
+                <label class="field-label">End Time</label>
+                <input type="time" id="adminBookEnd" class="form-control" value="14:00" required style="font-size:13px;">
+              </div>
+              <div>
+                <label class="field-label">Vehicle Plate</label>
+                <input type="text" id="adminVehiclePlate" class="form-control mono" value="MH12TS9999" placeholder="MH12AB1234" required style="font-size:13px;text-transform:uppercase;">
+              </div>
+              <div>
+                <button type="submit" id="btnAdminDispatch" class="btn btn-primary" style="width:100%;white-space:nowrap;padding:10px 14px;font-size:13px;font-weight:600;">
+                  ⚡ Dispatch Pass (₹0)
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div style="margin-bottom:16px;">
         <h3 style="font-size:16px;font-weight:700;color:var(--slate-900);margin-bottom:14px;">Recent Transaction Ledger</h3>
         <div class="table-wrapper">
           <table id="adminBookings">
@@ -527,6 +571,6 @@
     </div>
   </div>
 
-  <script src="/js/app.js?v=20261122_3"></script>
+  <script src="/js/app.js?v=20261122_4"></script>
 </body>
 </html>

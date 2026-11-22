@@ -158,10 +158,12 @@ app.put('/api/spaces/:id/toggle', auth, (req, res) => {
 // ==================== BOOKINGS ====================
 
 app.post('/api/bookings', auth, (req, res) => {
-  const { space_id, booking_date, start_time, end_time, vehicle_number } = req.body;
+  const { space_id, booking_date, start_time, end_time, vehicle_number, is_test_booking, payment_method } = req.body;
   const space = queryOne('SELECT * FROM parking_spaces WHERE id = ? AND is_active = 1', [space_id]);
   if (!space) return res.status(404).json({ error: 'Space not available' });
-  if (space.owner_id === req.user.id) return res.status(400).json({ error: 'Cannot book your own space' });
+  if (space.owner_id === req.user.id && !is_test_booking) {
+    return res.status(400).json({ error: 'Cannot book your own space in standard checkout. Use "Instant Test Booking" to simulate a reservation.' });
+  }
 
   // Calculate hours
   const start = new Date(`2026-01-01T${start_time}`);
@@ -192,10 +194,54 @@ app.post('/api/bookings', auth, (req, res) => {
     res.json({
       id: result.lastInsertRowid,
       total_amount,
-      message: 'Booking confirmed!'
+      is_test_booking: !!is_test_booking,
+      message: is_test_booking ? 'Test reservation confirmed (₹0 Sandbox Bypass)!' : 'Booking confirmed!'
     });
   } catch (e) {
     res.status(500).json({ error: 'Booking failed' });
+  }
+});
+
+// Real-time slot availability for a space on a given date (shows ticked/reserved slots)
+app.get('/api/spaces/:id/availability', (req, res) => {
+  const { date } = req.query;
+  const bookingDate = date || new Date().toISOString().split('T')[0];
+  const bookings = queryAll(`
+    SELECT id, start_time, end_time, vehicle_number, status
+    FROM bookings 
+    WHERE space_id = ? AND booking_date = ? AND status IN ('confirmed', 'active')
+    ORDER BY start_time ASC
+  `, [Number(req.params.id), bookingDate]);
+  res.json(bookings);
+});
+
+// Admin direct complimentary reservation dispatch (Zero payment required)
+app.post('/api/admin/dispatch-booking', auth, (req, res) => {
+  const { space_id, booking_date, start_time, end_time, vehicle_number } = req.body;
+  const space = queryOne('SELECT * FROM parking_spaces WHERE id = ?', [space_id]);
+  if (!space) return res.status(404).json({ error: 'Space not found' });
+
+  const start = new Date(`2026-01-01T${start_time}`);
+  const end = new Date(`2026-01-01T${end_time}`);
+  const hours = Math.max(1, (end - start) / (1000 * 60 * 60));
+
+  const customer_rate = Math.ceil(space.price_per_hour / 0.90);
+  const total_amount = Math.round(hours * customer_rate);
+  const commission = Math.round(total_amount * COMMISSION_RATE);
+  const owner_payout = total_amount - commission;
+
+  try {
+    const result = runSQL(
+      'INSERT INTO bookings (space_id, renter_id, owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      [space_id, req.user.id, space.owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number || 'MH12ADMIN01']
+    );
+    res.json({
+      id: result.lastInsertRowid,
+      total_amount,
+      message: 'Admin complimentary reservation dispatched successfully!'
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to dispatch booking' });
   }
 });
 

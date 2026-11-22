@@ -12,6 +12,7 @@ let currentSpace = null;
 let puneMap = null;
 let currentSearchView = 'list';
 let pendingBooking = null;
+let selectedPaymentMethod = 'sandbox';
 
 // Safe JSON fetch wrapper
 async function apiFetch(url, options = {}) {
@@ -207,7 +208,7 @@ function updateNav() {
       <a href="#" onclick="navigate('search')" class="${currentPage === 'search' ? 'active' : ''}">Inventory</a>
       <a href="#" onclick="navigate('list-space')" class="${currentPage === 'list-space' ? 'active' : ''}">List Space</a>
       <a href="#" onclick="navigate('dashboard')" class="${currentPage === 'dashboard' ? 'active' : ''}">Dashboard</a>
-      <a href="#" onclick="navigate('admin')" class="${currentPage === 'admin' ? 'active' : ''}">Clearing</a>
+      <a href="#" onclick="navigate('admin')" class="${currentPage === 'admin' ? 'active' : ''}">Clearing / Admin</a>
       <span style="color:var(--slate-300);font-size:12px;margin:0 4px;">|</span>
       <span style="color:var(--slate-700);font-size:13px;font-weight:600;">${currentUser.name}</span>
       <button onclick="logout()" style="color:var(--status-danger-text);font-size:12px;cursor:pointer;background:none;border:none;">Sign Out</button>
@@ -354,7 +355,7 @@ function initOrUpdateMap(spaces) {
     marker.bindPopup(`
       <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:6px;">
         <div style="font-size:11px;color:#64748B;font-weight:600;text-transform:uppercase;">${s.area}</div>
-        <div style="font-weight:700;color:#0F172A;font-size:13px;margin:2px 0 4px;">${s.title}</div>
+        <div style="font-weight:700;color:#0F172A;font-size:13px;margin-2px 0 4px;">${s.title}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#0F172A;font-size:14px;">₹${commuterPrice}/hr <span style="font-size:11px;color:#64748B;font-weight:500;">(${s.vehicle_type === 'car' ? 'Four-Wheeler' : 'Two-Wheeler'})</span></div>
         <button onclick="navigate('detail', ${s.id})" style="margin-top:10px;background:#0F172A;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;width:100%;">View Bay Details</button>
       </div>
@@ -496,6 +497,21 @@ async function loadSpaceDetail(id) {
             <div style="font-size:12px;color:var(--slate-500);margin-top:2px;">Contact: ${space.owner_phone}</div>
           </div>
         </div>
+
+        <!-- Live Slot Availability Position (Ticked Slots) -->
+        <div style="background:var(--slate-50);border:1px solid var(--slate-200);border-radius:var(--radius);padding:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--brand-accent);text-transform:uppercase;letter-spacing:0.06em;">Real-Time Bay Availability</div>
+              <h3 style="font-size:15px;font-weight:800;color:var(--slate-900);margin-top:2px;">Slot Availability Position</h3>
+            </div>
+            <span class="badge badge-confirmed" id="slotAvailabilityCount">Checking slots...</span>
+          </div>
+          <p style="font-size:12px;color:var(--slate-500);margin-bottom:14px;">Select any open slot window to autofill, or complete a test reservation to verify immediate slot ticking.</p>
+          <div id="slotTimelineGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(115px, 1fr));gap:10px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
       </div>
 
       <div>
@@ -507,7 +523,7 @@ async function loadSpaceDetail(id) {
 
           <div style="margin-bottom:14px;">
             <label class="field-label">Reservation Date</label>
-            <input type="date" id="bookDate" class="form-control" value="${new Date().toISOString().split('T')[0]}" min="${new Date().toISOString().split('T')[0]}">
+            <input type="date" id="bookDate" class="form-control" value="${new Date().toISOString().split('T')[0]}" min="${new Date().toISOString().split('T')[0]}" onchange="onBookDateChange(this.value)">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
             <div>
@@ -521,7 +537,7 @@ async function loadSpaceDetail(id) {
           </div>
           <div style="margin-bottom:18px;">
             <label class="field-label">Vehicle Registration Number</label>
-            <input type="text" id="bookVehicle" class="form-control mono" placeholder="MH12AB1234" style="text-transform:uppercase;letter-spacing:0.05em;">
+            <input type="text" id="bookVehicle" class="form-control mono" placeholder="MH12AB1234" value="MH12TS8821" style="text-transform:uppercase;letter-spacing:0.05em;">
           </div>
 
           <div style="background:var(--slate-50);border:1px solid var(--slate-200);border-radius:var(--radius);padding:16px;margin-bottom:20px;" id="costBreakdown">
@@ -529,8 +545,13 @@ async function loadSpaceDetail(id) {
           </div>
 
           <button class="btn btn-dark btn-lg" style="width:100%;font-size:14px;" onclick="confirmBooking()">
-            Reserve Space & Generate Security Pass
+            Reserve Space & Proceed to Settlement
           </button>
+
+          <button class="btn btn-secondary btn-lg" style="width:100%;font-size:13px;margin-top:10px;font-weight:700;border:1px dashed var(--brand-accent);background:var(--brand-accent-subtle);color:var(--brand-accent);" onclick="instantTestBooking()">
+            ⚡ Instant Test Booking (Sandbox — ₹0 Bypass)
+          </button>
+
           <div style="text-align:center;font-size:11px;color:var(--slate-400);margin-top:10px;">
             Instant Gate Authorization Issued via QR Protocol
           </div>
@@ -539,9 +560,89 @@ async function loadSpaceDetail(id) {
     `;
 
     updateCost();
+    renderSlotAvailability(space.id, document.getElementById('bookDate')?.value);
   } catch (e) {
     console.error('Failed to load space:', e);
   }
+}
+
+function onBookDateChange(date) {
+  if (currentSpace) {
+    renderSlotAvailability(currentSpace.id, date);
+  }
+  updateCost();
+}
+
+async function renderSlotAvailability(spaceId, date) {
+  const container = document.getElementById('slotTimelineGrid');
+  const countBadge = document.getElementById('slotAvailabilityCount');
+  if (!container || !currentSpace) return;
+
+  const targetDate = date || new Date().toISOString().split('T')[0];
+
+  try {
+    const res = await apiFetch(`/api/spaces/${spaceId}/availability?date=${encodeURIComponent(targetDate)}`);
+    const bookings = (res.ok && Array.isArray(res.data)) ? res.data : [];
+
+    const fromHour = parseInt((currentSpace.available_from || '08:00').split(':')[0]);
+    const toHour = parseInt((currentSpace.available_to || '20:00').split(':')[0]);
+
+    const slots = [];
+    for (let h = fromHour; h < toHour; h += 2) {
+      const slotStart = `${String(h).padStart(2, '0')}:00`;
+      const slotEnd = `${String(Math.min(h + 2, toHour)).padStart(2, '0')}:00`;
+
+      // Check if any booking overlaps with this 2-hour slot
+      const booked = bookings.find(b => {
+        return (slotStart < b.end_time && slotEnd > b.start_time);
+      });
+
+      slots.push({
+        start: slotStart,
+        end: slotEnd,
+        isBooked: !!booked,
+        booking: booked
+      });
+    }
+
+    const openCount = slots.filter(s => !s.isBooked).length;
+    if (countBadge) {
+      countBadge.textContent = `${openCount} of ${slots.length} Slots Open`;
+      countBadge.className = openCount > 0 ? 'badge badge-confirmed' : 'badge badge-cancelled';
+    }
+
+    container.innerHTML = slots.map(s => {
+      if (s.isBooked) {
+        return `
+          <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:10px 8px;text-align:center;">
+            <div style="font-size:11px;font-weight:700;color:#991B1B;">${formatTime(s.start)} &ndash; ${formatTime(s.end)}</div>
+            <div style="font-size:11px;font-weight:800;color:#DC2626;margin-top:4px;">✓ Booked / Ticked</div>
+            <div style="font-size:10px;color:#991B1B;margin-top:2px;" class="mono">${s.booking?.vehicle_number || 'Reserved'}</div>
+          </div>
+        `;
+      } else {
+        return `
+          <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:6px;padding:10px 8px;text-align:center;cursor:pointer;transition:all 0.15s ease;" onclick="applySlot('${s.start}', '${s.end}')" onmouseover="this.style.borderColor='#059669'" onmouseout="this.style.borderColor='#A7F3D0'">
+            <div style="font-size:11px;font-weight:700;color:#065F46;">${formatTime(s.start)} &ndash; ${formatTime(s.end)}</div>
+            <div style="font-size:11px;font-weight:700;color:#059669;margin-top:4px;">🟢 Available</div>
+            <div style="font-size:10px;color:#047857;margin-top:2px;">Tap to select</div>
+          </div>
+        `;
+      }
+    }).join('');
+
+  } catch (err) {
+    console.error('Error fetching slot availability:', err);
+  }
+}
+
+function applySlot(start, end) {
+  const startInput = document.getElementById('bookStart');
+  const endInput = document.getElementById('bookEnd');
+  if (startInput) startInput.value = start;
+  if (endInput) endInput.value = end;
+  updateCost();
+  showToast(`Autofilled slot: ${formatTime(start)} to ${formatTime(end)}`, 'success');
 }
 
 function updateCost() {
@@ -613,10 +714,70 @@ async function confirmBooking() {
   openPaymentModal();
 }
 
+async function instantTestBooking() {
+  if (!currentUser) {
+    showToast('Please sign in to test reservation', 'error');
+    showAuthModal('login');
+    return;
+  }
+
+  const vehicleNum = document.getElementById('bookVehicle')?.value?.trim()?.toUpperCase() || 'MH12TEST88';
+  const start = document.getElementById('bookStart')?.value || currentSpace.available_from;
+  const end = document.getElementById('bookEnd')?.value || currentSpace.available_to;
+  const bookDate = document.getElementById('bookDate')?.value || new Date().toISOString().split('T')[0];
+
+  const startDate = new Date(`2026-01-01T${start}`);
+  const endDate = new Date(`2026-01-01T${end}`);
+  const hours = Math.max(1, (endDate - startDate) / (1000 * 60 * 60));
+  const commuterRate = currentSpace.customer_price || Math.ceil(currentSpace.price_per_hour / 0.90);
+  const total = Math.round(hours * commuterRate);
+
+  showToast('Processing sandbox reservation without payment...', 'info');
+
+  try {
+    const res = await apiFetch('/api/bookings', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        space_id: currentSpace.id,
+        booking_date: bookDate,
+        start_time: start,
+        end_time: end,
+        vehicle_number: vehicleNum,
+        is_test_booking: true,
+        payment_method: 'sandbox_zero_bypass'
+      })
+    });
+
+    if (res.ok && res.data) {
+      showToast('✓ Test reservation confirmed & slot ticked!', 'success');
+      showGatePass({
+        id: res.data.id,
+        space_title: currentSpace.title,
+        address: currentSpace.address,
+        area: currentSpace.area,
+        vehicle_number: vehicleNum,
+        booking_date: bookDate,
+        start_time: start,
+        end_time: end,
+        owner_name: currentSpace.owner_name,
+        total_amount: total
+      });
+      // Refresh slot availability table immediately so slot turns red/ticked
+      renderSlotAvailability(currentSpace.id, bookDate);
+    } else {
+      showToast(res.error || 'Failed to complete test booking', 'error');
+    }
+  } catch (e) {
+    showToast('Connection error during booking', 'error');
+  }
+}
+
 function openPaymentModal() {
   const b = pendingBooking;
   if (!b) return;
 
+  selectedPaymentMethod = 'sandbox';
   const modal = document.getElementById('paymentModal');
   const body = document.getElementById('paymentModalBody');
 
@@ -646,22 +807,26 @@ function openPaymentModal() {
     </div>
 
     <div style="font-size:12px;font-weight:600;color:var(--slate-700);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Select Settlement Method</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
-      <button type="button" class="btn btn-secondary active" style="padding:10px;font-size:12px;" onclick="selectPaymentMethod(this, 'upi')">
-        UPI / Mobile Clearing
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;">
+      <button type="button" class="btn btn-secondary active" style="padding:10px;font-size:11px;font-weight:700;" onclick="selectPaymentMethod(this, 'sandbox')">
+        ⚡ Sandbox (₹0)
       </button>
-      <button type="button" class="btn btn-secondary" style="padding:10px;font-size:12px;" onclick="selectPaymentMethod(this, 'card')">
-        Corporate Card
+      <button type="button" class="btn btn-secondary" style="padding:10px;font-size:11px;" onclick="selectPaymentMethod(this, 'upi')">
+        UPI Simulation
+      </button>
+      <button type="button" class="btn btn-secondary" style="padding:10px;font-size:11px;" onclick="selectPaymentMethod(this, 'card')">
+        Card Demo
       </button>
     </div>
 
-    <div id="upiPaySection" style="margin-bottom:20px;">
-      <label class="field-label">Virtual Payment Address (VPA / UPI ID)</label>
-      <input type="text" id="upiIdInput" class="form-control mono" value="${currentUser ? currentUser.phone + '@upi' : 'user@okhdfcbank'}" placeholder="mobile@upi">
+    <div id="paymentDynamicSection" style="margin-bottom:20px;">
+      <div style="background:var(--status-success-bg);border:1px solid var(--status-success-border);padding:14px;border-radius:var(--radius);font-size:12px;color:var(--status-success-text);line-height:1.6;">
+        <strong>⚡ Sandbox Direct Verification:</strong> Direct payment bypass enabled for rapid prototype testing. Click below to immediately approve this reservation, mark the slot as ticked, and generate the gate security pass without entering bank credentials.
+      </div>
     </div>
 
-    <button class="btn btn-dark btn-lg" style="width:100%;font-size:14px;" onclick="processPaymentAndBook()">
-      Authorize ₹${b.total_amount} & Issue Gate Pass
+    <button class="btn btn-dark btn-lg" id="btnConfirmPaymentModal" style="width:100%;font-size:14px;" onclick="processPaymentAndBook()">
+      ⚡ Confirm Booking & Issue Gate Pass (₹0 Sandbox Bypass)
     </button>
   `;
 
@@ -669,18 +834,31 @@ function openPaymentModal() {
 }
 
 function selectPaymentMethod(btn, method) {
+  selectedPaymentMethod = method;
   btn.parentElement.querySelectorAll('button').forEach(b => {
     b.classList.remove('active');
   });
   btn.classList.add('active');
 
-  const paySection = document.getElementById('upiPaySection');
-  if (paySection) {
-    if (method === 'upi') {
+  const paySection = document.getElementById('paymentDynamicSection');
+  const actionBtn = document.getElementById('btnConfirmPaymentModal');
+  const b = pendingBooking;
+
+  if (paySection && actionBtn) {
+    if (method === 'sandbox') {
+      paySection.innerHTML = `
+        <div style="background:var(--status-success-bg);border:1px solid var(--status-success-border);padding:14px;border-radius:var(--radius);font-size:12px;color:var(--status-success-text);line-height:1.6;">
+          <strong>⚡ Sandbox Direct Verification:</strong> Direct payment bypass enabled for rapid prototype testing. Click below to immediately approve this reservation, mark the slot as ticked, and generate the gate security pass without entering bank credentials.
+        </div>
+      `;
+      actionBtn.textContent = '⚡ Confirm Booking & Issue Gate Pass (₹0 Sandbox Bypass)';
+    } else if (method === 'upi') {
       paySection.innerHTML = `
         <label class="field-label">Virtual Payment Address (VPA / UPI ID)</label>
         <input type="text" id="upiIdInput" class="form-control mono" value="${currentUser ? currentUser.phone + '@upi' : 'user@okhdfcbank'}" placeholder="mobile@upi">
+        <div style="font-size:11px;color:var(--slate-400);margin-top:4px;">Simulated UPI clearing network</div>
       `;
+      actionBtn.textContent = `Authorize ₹${b.total_amount} via UPI & Issue Pass`;
     } else {
       paySection.innerHTML = `
         <div style="margin-bottom:10px;">
@@ -692,6 +870,7 @@ function selectPaymentMethod(btn, method) {
           <div><label class="field-label">CVV</label><input type="password" class="form-control mono" value="892"></div>
         </div>
       `;
+      actionBtn.textContent = `Authorize ₹${b.total_amount} via Card & Issue Pass`;
     }
   }
 }
@@ -703,10 +882,13 @@ function closePaymentModal() {
 async function processPaymentAndBook() {
   if (!pendingBooking) return;
 
-  const btn = event?.currentTarget;
+  const isTest = (selectedPaymentMethod === 'sandbox');
+  const btn = document.getElementById('btnConfirmPaymentModal');
+  const originalText = btn ? btn.textContent : '';
+
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Clearing settlement...';
+    btn.textContent = 'Confirming reservation...';
   }
 
   try {
@@ -718,13 +900,15 @@ async function processPaymentAndBook() {
         booking_date: pendingBooking.booking_date,
         start_time: pendingBooking.start_time,
         end_time: pendingBooking.end_time,
-        vehicle_number: pendingBooking.vehicle_number
+        vehicle_number: pendingBooking.vehicle_number,
+        is_test_booking: isTest,
+        payment_method: selectedPaymentMethod
       })
     });
     if (res.ok && res.data) {
       const data = res.data;
       closePaymentModal();
-      showToast(`Settlement cleared: ₹${data.total_amount}. Security pass issued.`, 'success');
+      showToast(`✓ Reservation confirmed & slot ticked! Security pass issued.`, 'success');
       showGatePass({
         id: data.id,
         space_title: pendingBooking.spaceTitle,
@@ -737,6 +921,10 @@ async function processPaymentAndBook() {
         owner_name: pendingBooking.ownerName,
         total_amount: data.total_amount
       });
+      // Refresh slot availability table if on detail page
+      if (currentSpace) {
+        renderSlotAvailability(currentSpace.id, pendingBooking.booking_date);
+      }
     } else {
       showToast(res.error || 'Booking failed', 'error');
     }
@@ -745,7 +933,7 @@ async function processPaymentAndBook() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'Authorize & Issue Pass';
+      btn.textContent = originalText;
     }
   }
 }
@@ -762,7 +950,7 @@ function showGatePass(booking) {
     <div class="access-badge-container">
       <div class="access-badge-header">
         <div class="access-badge-title">Housing Society Entry Authorization</div>
-        <span class="badge badge-confirmed">Gate Verified</span>
+        <span class="badge badge-confirmed">✓ Gate Verified</span>
       </div>
 
       <div style="text-align:center;">
@@ -789,7 +977,7 @@ function showGatePass(booking) {
 
         <div style="display:flex;gap:10px;">
           <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="window.print()">Print Official Pass</button>
-          <button class="btn btn-dark btn-sm" style="flex:1;" onclick="closeGatePassModal(); navigate('dashboard');">Close</button>
+          <button class="btn btn-dark btn-sm" style="flex:1;" onclick="closeGatePassModal(); navigate('dashboard');">Go to Dashboard</button>
         </div>
       </div>
     </div>
@@ -962,7 +1150,7 @@ function renderDashTab(tab) {
         </div>
         <div style="text-align:right;">
           <div class="ledger-amount">₹${b.total_amount}</div>
-          <span class="badge badge-${b.status}">${b.status}</span>
+          <span class="badge badge-confirmed">✓ ${b.status === 'confirmed' ? 'Confirmed & Ticked' : b.status}</span>
           ${b.status === 'confirmed' ? `
             <div style="margin-top:10px;display:flex;gap:6px;justify-content:flex-end;">
               <button class="btn btn-dark btn-sm" onclick='showGatePass(${JSON.stringify(b).replace(/'/g, "&apos;")})'>Access Pass</button>
@@ -985,12 +1173,12 @@ function renderDashTab(tab) {
         <div class="ledger-main">
           <h4>${b.title}</h4>
           <div class="sub">Commuter: ${b.renter_name} &bull; Phone: ${b.renter_phone}</div>
-          <div class="sub" style="margin-top:2px;">Date: ${b.booking_date} (${formatTime(b.start_time)} &ndash; ${formatTime(b.end_time)}, ${b.hours} hrs)</div>
+          <div class="sub" style="margin-top:2px;">Date: ${b.booking_date} (${formatTime(b.start_time)} &ndash; ${formatTime(b.end_time)}, ${b.hours} hrs) &bull; Plate: <span class="mono" style="font-weight:600;">${b.vehicle_number || 'N/A'}</span></div>
         </div>
         <div style="text-align:right;">
           <div class="ledger-amount" style="color:var(--status-success-text);">+₹${b.owner_payout}</div>
           <div style="font-size:11px;color:var(--slate-400);">Platform Fee: ₹${b.commission}</div>
-          <span class="badge badge-${b.status}">${b.status}</span>
+          <span class="badge badge-confirmed">✓ Inbound Reserved</span>
         </div>
       </div>
     `).join('');
@@ -1067,9 +1255,31 @@ async function toggleSpace(id) {
 
 async function loadAdmin() {
   try {
-    const res = await apiFetch('/api/admin/analytics');
-    if (!res.ok || !res.data) return;
-    const data = res.data;
+    const [analyticsRes, spacesRes] = await Promise.all([
+      apiFetch('/api/admin/analytics'),
+      apiFetch('/api/spaces')
+    ]);
+
+    if (!analyticsRes.ok || !analyticsRes.data) return;
+    const data = analyticsRes.data;
+
+    // Populate admin target spaces dropdown
+    if (spacesRes.ok && Array.isArray(spacesRes.data)) {
+      window._adminSpaces = spacesRes.data;
+      const select = document.getElementById('adminSpaceSelect');
+      if (select) {
+        select.innerHTML = '<option value="">Select Target Bay...</option>' + 
+          spacesRes.data.map(s => {
+            const commuterPrice = s.customer_price || Math.ceil(s.price_per_hour / 0.90);
+            return `<option value="${s.id}">${s.title} (${s.area} — ₹${commuterPrice}/hr)</option>`;
+          }).join('');
+      }
+    }
+
+    const adminDateInput = document.getElementById('adminBookDate');
+    if (adminDateInput && !adminDateInput.value) {
+      adminDateInput.value = new Date().toISOString().split('T')[0];
+    }
 
     document.getElementById('adminStats').innerHTML = `
       <div class="stat-card">
@@ -1127,12 +1337,79 @@ async function loadAdmin() {
           <td>${b.hours} hrs</td>
           <td class="mono" style="font-weight:600;">₹${b.total_amount}</td>
           <td class="mono" style="color:var(--brand-accent);font-weight:600;">₹${b.commission}</td>
-          <td><span class="badge badge-${b.status}">${b.status}</span></td>
+          <td><span class="badge badge-confirmed">✓ ${b.status}</span></td>
         </tr>
       `).join('');
     }
   } catch (e) {
     console.error('Failed to load admin:', e);
+  }
+}
+
+async function submitAdminDispatch(e) {
+  e.preventDefault();
+  if (!currentUser) {
+    showToast('Please sign in to dispatch complimentary booking', 'error');
+    showAuthModal('login');
+    return;
+  }
+
+  const spaceId = Number(document.getElementById('adminSpaceSelect')?.value);
+  const date = document.getElementById('adminBookDate')?.value;
+  const start = document.getElementById('adminBookStart')?.value;
+  const end = document.getElementById('adminBookEnd')?.value;
+  const plate = document.getElementById('adminVehiclePlate')?.value?.trim()?.toUpperCase() || 'MH12ADMIN01';
+  const btn = document.getElementById('btnAdminDispatch');
+
+  if (!spaceId || !date || !start || !end) {
+    showToast('Please fill all dispatch parameters', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Dispatching Pass...';
+  }
+
+  try {
+    const res = await apiFetch('/api/admin/dispatch-booking', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        space_id: spaceId,
+        booking_date: date,
+        start_time: start,
+        end_time: end,
+        vehicle_number: plate
+      })
+    });
+
+    if (res.ok && res.data) {
+      showToast('✓ Admin reservation dispatched & ticked in ledger!', 'success');
+      const targetSpace = (window._adminSpaces || []).find(s => s.id === spaceId);
+      showGatePass({
+        id: res.data.id,
+        space_title: targetSpace ? targetSpace.title : `Bay #${spaceId}`,
+        address: targetSpace ? targetSpace.address : 'Sector Access Corridor',
+        area: targetSpace ? targetSpace.area : 'Pune Corridor',
+        vehicle_number: plate,
+        booking_date: date,
+        start_time: start,
+        end_time: end,
+        owner_name: targetSpace ? targetSpace.owner_name : 'Platform Host',
+        total_amount: res.data.total_amount
+      });
+      loadAdmin();
+    } else {
+      showToast(res.error || 'Failed to dispatch reservation', 'error');
+    }
+  } catch (err) {
+    showToast('Connection error during dispatch', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '⚡ Dispatch Pass (₹0)';
+    }
   }
 }
 
