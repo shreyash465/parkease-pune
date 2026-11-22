@@ -1,6 +1,10 @@
 // ===== ParkEase Pune - Frontend Application =====
 
-const API = '';
+// Determine API endpoint: Use Render backend when on custom domain or Cloudflare Pages
+const API = (window.location.hostname.includes('aenrox.com') || window.location.hostname.includes('pages.dev'))
+  ? 'https://parkease-pune.onrender.com'
+  : (window.location.port === '3000' || window.location.port === '10000') ? '' : 'https://parkease-pune.onrender.com';
+
 let currentUser = null;
 let token = localStorage.getItem('parkease_token');
 let currentPage = 'home';
@@ -8,6 +12,25 @@ let currentSpace = null;
 let puneMap = null;
 let currentSearchView = 'list';
 let pendingBooking = null;
+
+// Safe JSON fetch wrapper
+async function apiFetch(url, options = {}) {
+  const fullUrl = url.startsWith('http') ? url : `${API}${url}`;
+  try {
+    const res = await fetch(fullUrl, options);
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      // If server returned HTML (e.g. 404 or cold start)
+      return { ok: false, status: res.status, error: 'Service initializing, please retry in a few seconds', data: null };
+    }
+    return { ok: res.ok, status: res.status, data, error: data?.error };
+  } catch (err) {
+    return { ok: false, status: 0, error: 'Connection error. Please try again.', data: null };
+  }
+}
 
 // ==================== INIT ====================
 
@@ -27,9 +50,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchUser() {
   try {
-    const res = await fetch(`${API}/api/me`, { headers: authHeaders() });
-    if (res.ok) {
-      currentUser = await res.json();
+    const res = await apiFetch('/api/me', { headers: authHeaders() });
+    if (res.ok && res.data) {
+      currentUser = res.data;
       updateNav();
     } else {
       logout();
@@ -65,57 +88,81 @@ function switchAuthTab(tab) {
 
 async function handleLogin(e) {
   e.preventDefault();
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPass').value;
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value.trim();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in... ⏳';
+  }
 
   try {
-    const res = await fetch(`${API}/api/login`, {
+    const res = await apiFetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
-    if (res.ok) {
-      token = data.token;
-      currentUser = data.user;
+
+    if (res.ok && res.data && res.data.token) {
+      token = res.data.token;
+      currentUser = res.data.user;
       localStorage.setItem('parkease_token', token);
       closeAuthModal();
       updateNav();
       showToast(`Welcome back, ${currentUser.name}! 👋`, 'success');
+      navigate('dashboard');
     } else {
-      showToast(data.error || 'Login failed', 'error');
+      showToast(res.error || 'Invalid email or password', 'error');
     }
-  } catch (e) {
-    showToast('Connection error', 'error');
+  } catch (err) {
+    showToast('Connecting to server... Please try again.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Login';
+    }
   }
 }
 
 async function handleRegister(e) {
   e.preventDefault();
-  const name = document.getElementById('regName').value;
-  const email = document.getElementById('regEmail').value;
-  const phone = document.getElementById('regPhone').value;
-  const password = document.getElementById('regPass').value;
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const password = document.getElementById('regPass').value.trim();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating account... ⏳';
+  }
 
   try {
-    const res = await fetch(`${API}/api/register`, {
+    const res = await apiFetch('/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, phone, password })
     });
-    const data = await res.json();
-    if (res.ok) {
-      token = data.token;
-      currentUser = data.user;
+
+    if (res.ok && res.data && res.data.token) {
+      token = res.data.token;
+      currentUser = res.data.user;
       localStorage.setItem('parkease_token', token);
       closeAuthModal();
       updateNav();
       showToast(`Welcome to ParkEase, ${currentUser.name}! 🎉`, 'success');
+      navigate('dashboard');
     } else {
-      showToast(data.error || 'Registration failed', 'error');
+      showToast(res.error || 'Registration failed', 'error');
     }
-  } catch (e) {
+  } catch (err) {
     showToast('Connection error', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create Account';
+    }
   }
 }
 
@@ -181,26 +228,31 @@ function navigate(page, data) {
 
 async function loadAreas() {
   try {
-    const res = await fetch(`${API}/api/areas`);
-    const areas = await res.json();
+    const res = await apiFetch('/api/areas');
+    const areas = (res.ok && Array.isArray(res.data)) ? res.data : [];
+    if (!areas.length) return;
 
     // Populate search dropdown
     const searchArea = document.getElementById('searchArea');
     const filterArea = document.getElementById('filterArea');
+    if (searchArea) searchArea.innerHTML = '<option value="">All Areas</option>';
+    if (filterArea) filterArea.innerHTML = '<option value="">All Areas</option>';
     areas.forEach(a => {
-      searchArea.innerHTML += `<option value="${a.area}">${a.area} (${a.space_count})</option>`;
-      filterArea.innerHTML += `<option value="${a.area}">${a.area}</option>`;
+      if (searchArea) searchArea.innerHTML += `<option value="${a.area}">${a.area} (${a.space_count})</option>`;
+      if (filterArea) filterArea.innerHTML += `<option value="${a.area}">${a.area}</option>`;
     });
 
     // Populate areas grid
     const grid = document.getElementById('areasGrid');
-    grid.innerHTML = areas.map(a => `
-      <div class="area-card" onclick="searchByArea('${a.area}')">
-        <h4>📍 ${a.area}</h4>
-        <p>${a.space_count} spot${a.space_count > 1 ? 's' : ''} available</p>
-        <div class="price-range">₹${a.min_price} - ₹${a.max_price}/hr</div>
-      </div>
-    `).join('');
+    if (grid) {
+      grid.innerHTML = areas.map(a => `
+        <div class="area-card" onclick="searchByArea('${a.area}')">
+          <h4>📍 ${a.area}</h4>
+          <p>${a.space_count} spot${a.space_count > 1 ? 's' : ''} available</p>
+          <div class="price-range">₹${a.min_price} - ₹${a.max_price}/hr</div>
+        </div>
+      `).join('');
+    }
   } catch (e) {
     console.error('Failed to load areas:', e);
   }
@@ -291,22 +343,27 @@ function initOrUpdateMap(spaces) {
 }
 
 async function loadSpaces() {
-  const area = document.getElementById('filterArea').value;
-  const vehicle = document.getElementById('filterVehicle').value;
+  const area = document.getElementById('filterArea')?.value || '';
+  const vehicle = document.getElementById('filterVehicle')?.value || '';
 
-  let url = `${API}/api/spaces?`;
+  let url = '/api/spaces?';
   if (area) url += `area=${encodeURIComponent(area)}&`;
   if (vehicle) url += `vehicle_type=${vehicle}&`;
 
   try {
-    const res = await fetch(url);
-    const spaces = await res.json();
+    const res = await apiFetch(url);
+    const spaces = (res.ok && Array.isArray(res.data)) ? res.data : [];
 
-    document.getElementById('resultCount').textContent = `${spaces.length} parking spot${spaces.length !== 1 ? 's' : ''} found`;
+    const resultCountEl = document.getElementById('resultCount');
+    if (resultCountEl) {
+      resultCountEl.textContent = `${spaces.length} parking spot${spaces.length !== 1 ? 's' : ''} found`;
+    }
 
     initOrUpdateMap(spaces);
 
     const grid = document.getElementById('spacesGrid');
+    if (!grid) return;
+
     if (spaces.length === 0) {
       grid.innerHTML = `
         <div class="empty-state" style="grid-column:1/-1;">
@@ -354,8 +411,12 @@ async function loadSpaces() {
 
 async function loadSpaceDetail(id) {
   try {
-    const res = await fetch(`${API}/api/spaces/${id}`);
-    const space = await res.json();
+    const res = await apiFetch(`/api/spaces/${id}`);
+    if (!res.ok || !res.data) {
+      showToast('Could not load parking space details', 'error');
+      return;
+    }
+    const space = res.data;
     currentSpace = space;
 
     const content = document.getElementById('detailContent');
@@ -633,7 +694,7 @@ async function processPaymentAndBook() {
   }
 
   try {
-    const res = await fetch(`${API}/api/bookings`, {
+    const res = await apiFetch('/api/bookings', {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
@@ -644,8 +705,8 @@ async function processPaymentAndBook() {
         vehicle_number: pendingBooking.vehicle_number
       })
     });
-    const data = await res.json();
-    if (res.ok) {
+    if (res.ok && res.data) {
+      const data = res.data;
       closePaymentModal();
       showToast(`Payment of ₹${data.total_amount} successful! Gate Pass ready. 🎉`, 'success');
       showGatePass({
@@ -661,7 +722,7 @@ async function processPaymentAndBook() {
         total_amount: data.total_amount
       });
     } else {
-      showToast(data.error || 'Booking failed', 'error');
+      showToast(res.error || 'Booking failed', 'error');
     }
   } catch (e) {
     showToast('Connection error', 'error');
@@ -748,18 +809,17 @@ async function submitSpace(e) {
   };
 
   try {
-    const res = await fetch(`${API}/api/spaces`, {
+    const res = await apiFetch('/api/spaces', {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify(space)
     });
-    const data = await res.json();
     if (res.ok) {
       showToast('Parking spot listed successfully! 🎉', 'success');
       document.getElementById('listSpaceForm').reset();
       navigate('dashboard');
     } else {
-      showToast(data.error || 'Failed to list', 'error');
+      showToast(res.error || 'Failed to list', 'error');
     }
   } catch (e) {
     showToast('Connection error', 'error');
@@ -771,16 +831,16 @@ async function submitSpace(e) {
 async function loadDashboard() {
   try {
     const [dashRes, bookingsRes, spaceBookingsRes, spacesRes] = await Promise.all([
-      fetch(`${API}/api/dashboard`, { headers: authHeaders() }),
-      fetch(`${API}/api/my-bookings`, { headers: authHeaders() }),
-      fetch(`${API}/api/space-bookings`, { headers: authHeaders() }),
-      fetch(`${API}/api/my-spaces`, { headers: authHeaders() })
+      apiFetch('/api/dashboard', { headers: authHeaders() }),
+      apiFetch('/api/my-bookings', { headers: authHeaders() }),
+      apiFetch('/api/space-bookings', { headers: authHeaders() }),
+      apiFetch('/api/my-spaces', { headers: authHeaders() })
     ]);
 
-    const dash = await dashRes.json();
-    const bookings = await bookingsRes.json();
-    const spaceBookings = await spaceBookingsRes.json();
-    const spaces = await spacesRes.json();
+    const dash = dashRes.ok && dashRes.data ? dashRes.data : {};
+    const bookings = bookingsRes.ok && Array.isArray(bookingsRes.data) ? bookingsRes.data : [];
+    const spaceBookings = spaceBookingsRes.ok && Array.isArray(spaceBookingsRes.data) ? spaceBookingsRes.data : [];
+    const spaces = spacesRes.ok && Array.isArray(spacesRes.data) ? spacesRes.data : [];
 
     // Stats
     document.getElementById('dashStats').innerHTML = `
@@ -902,13 +962,15 @@ function renderDashTab(tab) {
 async function cancelBooking(id) {
   if (!confirm('Cancel this booking?')) return;
   try {
-    const res = await fetch(`${API}/api/bookings/${id}/cancel`, {
+    const res = await apiFetch(`/api/bookings/${id}/cancel`, {
       method: 'PUT',
       headers: authHeaders()
     });
     if (res.ok) {
       showToast('Booking cancelled', 'success');
       loadDashboard();
+    } else {
+      showToast(res.error || 'Failed to cancel', 'error');
     }
   } catch (e) {
     showToast('Failed to cancel', 'error');
@@ -917,14 +979,15 @@ async function cancelBooking(id) {
 
 async function toggleSpace(id) {
   try {
-    const res = await fetch(`${API}/api/spaces/${id}/toggle`, {
+    const res = await apiFetch(`/api/spaces/${id}/toggle`, {
       method: 'PUT',
       headers: authHeaders()
     });
-    if (res.ok) {
-      const data = await res.json();
-      showToast(data.message, 'success');
+    if (res.ok && res.data) {
+      showToast(res.data.message || 'Updated', 'success');
       loadDashboard();
+    } else {
+      showToast(res.error || 'Failed to update', 'error');
     }
   } catch (e) {
     showToast('Failed to update', 'error');
@@ -935,8 +998,9 @@ async function toggleSpace(id) {
 
 async function loadAdmin() {
   try {
-    const res = await fetch(`${API}/api/admin/analytics`);
-    const data = await res.json();
+    const res = await apiFetch('/api/admin/analytics');
+    if (!res.ok || !res.data) return;
+    const data = res.data;
 
     // Stats
     document.getElementById('adminStats').innerHTML = `
