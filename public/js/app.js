@@ -40,8 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (token) {
     fetchUser();
+  } else {
+    updateNav();
   }
-  updateNav();
+
   loadAreas();
 });
 
@@ -84,13 +86,25 @@ function switchAuthTab(tab) {
   const regForm = document.getElementById('registerForm');
   const tabLogin = document.getElementById('tabLogin');
   const tabReg = document.getElementById('tabRegister');
-  const title = document.getElementById('authModalTitle');
 
-  if (loginForm) loginForm.style.display = tab === 'login' ? 'block' : 'none';
-  if (regForm) regForm.style.display = tab === 'register' ? 'block' : 'none';
-  if (tabLogin) tabLogin.classList.toggle('active', tab === 'login');
-  if (tabReg) tabReg.classList.toggle('active', tab === 'register');
-  if (title) title.textContent = tab === 'login' ? 'Sign In to Account' : 'Create Organization / User Account';
+  if (tab === 'login') {
+    if (loginForm) loginForm.style.display = 'block';
+    if (regForm) regForm.style.display = 'none';
+    tabLogin?.classList.add('active');
+    tabReg?.classList.remove('active');
+  } else {
+    if (loginForm) loginForm.style.display = 'none';
+    if (regForm) regForm.style.display = 'block';
+    tabReg?.classList.add('active');
+    tabLogin?.classList.remove('active');
+  }
+}
+
+function fillDemo(email) {
+  const emailInput = document.getElementById('loginEmail');
+  const passInput = document.getElementById('loginPass');
+  if (emailInput) emailInput.value = email;
+  if (passInput) passInput.value = 'demo123';
 }
 
 async function handleLogin(e) {
@@ -111,7 +125,7 @@ async function handleLogin(e) {
       body: JSON.stringify({ email, password })
     });
 
-    if (res.ok && res.data && res.data.token) {
+    if (res.ok && res.data?.token) {
       token = res.data.token;
       currentUser = res.data.user;
       localStorage.setItem('parkease_token', token);
@@ -142,7 +156,7 @@ async function handleRegister(e) {
 
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Registering...';
+    submitBtn.textContent = 'Creating Account...';
   }
 
   try {
@@ -152,7 +166,7 @@ async function handleRegister(e) {
       body: JSON.stringify({ name, email, phone, password })
     });
 
-    if (res.ok && res.data && res.data.token) {
+    if (res.ok && res.data?.token) {
       token = res.data.token;
       currentUser = res.data.user;
       localStorage.setItem('parkease_token', token);
@@ -196,7 +210,7 @@ function updateNav() {
       <a href="#" onclick="navigate('admin')" class="${currentPage === 'admin' ? 'active' : ''}">Clearing</a>
       <span style="color:var(--slate-300);font-size:12px;margin:0 4px;">|</span>
       <span style="color:var(--slate-700);font-size:13px;font-weight:600;">${currentUser.name}</span>
-      <button onclick="logout()" style="color:var(--status-danger-text);font-size:12px;cursor:pointer;">Sign Out</button>
+      <button onclick="logout()" style="color:var(--status-danger-text);font-size:12px;cursor:pointer;background:none;border:none;">Sign Out</button>
     `;
   } else {
     nav.innerHTML = `
@@ -328,9 +342,10 @@ function initOrUpdateMap(spaces) {
 
   const validSpaces = spaces.filter(s => s.lat && s.lng);
   validSpaces.forEach(s => {
+    const commuterPrice = s.customer_price || Math.ceil(s.price_per_hour / 0.90);
     const icon = L.divIcon({
       className: 'custom-map-pin',
-      html: `<div style="background:#0F172A;color:#FFFFFF;font-family:'JetBrains Mono',monospace;font-weight:700;padding:4px 9px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.25);font-size:11px;white-space:nowrap;border:1px solid #334155;">₹${s.price_per_hour}/hr</div>`,
+      html: `<div style="background:#0F172A;color:#FFFFFF;font-family:'JetBrains Mono',monospace;font-weight:700;padding:4px 9px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.25);font-size:11px;white-space:nowrap;border:1px solid #334155;">₹${commuterPrice}/hr</div>`,
       iconSize: [60, 26],
       iconAnchor: [30, 13]
     });
@@ -340,7 +355,7 @@ function initOrUpdateMap(spaces) {
       <div style="font-family:'Plus Jakarta Sans',sans-serif;padding:6px;">
         <div style="font-size:11px;color:#64748B;font-weight:600;text-transform:uppercase;">${s.area}</div>
         <div style="font-weight:700;color:#0F172A;font-size:13px;margin:2px 0 4px;">${s.title}</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#0F172A;font-size:14px;">₹${s.price_per_hour}/hr <span style="font-size:11px;color:#64748B;font-weight:500;">(${s.vehicle_type === 'car' ? 'Four-Wheeler' : 'Two-Wheeler'})</span></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#0F172A;font-size:14px;">₹${commuterPrice}/hr <span style="font-size:11px;color:#64748B;font-weight:500;">(${s.vehicle_type === 'car' ? 'Four-Wheeler' : 'Two-Wheeler'})</span></div>
         <button onclick="navigate('detail', ${s.id})" style="margin-top:10px;background:#0F172A;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;width:100%;">View Bay Details</button>
       </div>
     `);
@@ -384,36 +399,39 @@ async function loadSpaces() {
       return;
     }
 
-    grid.innerHTML = spaces.map(s => `
-      <div class="space-card" onclick="navigate('detail', ${s.id})">
-        <div class="space-card-top">
-          <div>
-            <span class="space-locality-tag">${s.area}</span>
-            <div class="rate-display">₹${s.price_per_hour}<small>/hr</small></div>
-          </div>
-          <span class="type-pill">${s.vehicle_type === 'car' ? 'Four-Wheeler' : 'Two-Wheeler'}</span>
-        </div>
-        <div class="space-card-body">
-          <h3>${s.title}</h3>
-          <div class="address">${s.address}</div>
-          <div class="meta-row">
-            <span>Hours: ${formatTime(s.available_from)} &ndash; ${formatTime(s.available_to)}</span>
-            <span>&bull;</span>
-            <span>${s.available_days}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--slate-100);">
-            <div class="features-list">
-              ${s.is_covered ? '<span class="feat-tag">Covered Bay</span>' : ''}
-              ${s.has_cctv ? '<span class="feat-tag">CCTV</span>' : ''}
-              ${s.has_guard ? '<span class="feat-tag">Security</span>' : ''}
+    grid.innerHTML = spaces.map(s => {
+      const commuterRate = s.customer_price || Math.ceil(s.price_per_hour / 0.90);
+      return `
+        <div class="space-card" onclick="navigate('detail', ${s.id})">
+          <div class="space-card-top">
+            <div>
+              <span class="space-locality-tag">${s.area}</span>
+              <div class="rate-display">₹${commuterRate}<small>/hr</small></div>
             </div>
-            <span style="font-size:11px;font-weight:600;color:var(--slate-600);">
-              ${s.avg_rating > 0 ? `Rating: ${s.avg_rating.toFixed(1)}/5` : 'Standard'}
-            </span>
+            <span class="type-pill">${s.vehicle_type === 'car' ? 'Four-Wheeler' : 'Two-Wheeler'}</span>
+          </div>
+          <div class="space-card-body">
+            <h3>${s.title}</h3>
+            <div class="address">${s.address}</div>
+            <div class="meta-row">
+              <span>Hours: ${formatTime(s.available_from)} &ndash; ${formatTime(s.available_to)}</span>
+              <span>&bull;</span>
+              <span>${s.available_days}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--slate-100);">
+              <div class="features-list">
+                ${s.is_covered ? '<span class="feat-tag">Covered Bay</span>' : ''}
+                ${s.has_cctv ? '<span class="feat-tag">CCTV</span>' : ''}
+                ${s.has_guard ? '<span class="feat-tag">Security</span>' : ''}
+              </div>
+              <span style="font-size:11px;font-weight:600;color:var(--slate-600);">
+                ${s.avg_rating > 0 ? `Rating: ${s.avg_rating.toFixed(1)}/5` : 'Standard'}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   } catch (e) {
     console.error('Failed to load spaces:', e);
   }
@@ -430,6 +448,7 @@ async function loadSpaceDetail(id) {
     }
     const space = res.data;
     currentSpace = space;
+    const commuterRate = space.customer_price || Math.ceil(space.price_per_hour / 0.90);
 
     const content = document.getElementById('detailContent');
     content.innerHTML = `
@@ -482,7 +501,7 @@ async function loadSpaceDetail(id) {
       <div>
         <div style="background:var(--white);border:1px solid var(--slate-300);border-radius:var(--radius-md);padding:28px;box-shadow:var(--shadow-sm);position:sticky;top:80px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;">
-            <div class="rate-display">₹${space.price_per_hour}<small style="font-size:13px;color:var(--slate-500);">/hour</small></div>
+            <div class="rate-display">₹${commuterRate}<small style="font-size:13px;color:var(--slate-500);">/hour</small></div>
             <span style="font-size:12px;font-weight:600;color:var(--slate-500);">${space.avg_rating > 0 ? `Rating: ${space.avg_rating.toFixed(1)}/5` : 'Standard Tariff'}</span>
           </div>
 
@@ -506,7 +525,7 @@ async function loadSpaceDetail(id) {
           </div>
 
           <div style="background:var(--slate-50);border:1px solid var(--slate-200);border-radius:var(--radius);padding:16px;margin-bottom:20px;" id="costBreakdown">
-            <!-- Dynamic cost summary -->
+            <!-- Dynamic cost summary (commission hidden from customer) -->
           </div>
 
           <button class="btn btn-dark btn-lg" style="width:100%;font-size:14px;" onclick="confirmBooking()">
@@ -534,24 +553,19 @@ function updateCost() {
   const startDate = new Date(`2026-01-01T${start}`);
   const endDate = new Date(`2026-01-01T${end}`);
   const hours = Math.max(0, (endDate - startDate) / (1000 * 60 * 60));
-  const total = Math.round(hours * currentSpace.price_per_hour);
-  const commission = Math.round(total * 0.15);
-  const ownerPayout = total - commission;
+  const commuterRate = currentSpace.customer_price || Math.ceil(currentSpace.price_per_hour / 0.90);
+  const total = Math.round(hours * commuterRate);
 
   const breakdown = document.getElementById('costBreakdown');
   if (breakdown) {
     breakdown.innerHTML = `
       <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--slate-600);margin-bottom:6px;">
-        <span>Tariff (${hours} hrs &times; ₹${currentSpace.price_per_hour})</span>
+        <span>Tariff (${hours} hrs &times; ₹${commuterRate}/hr)</span>
         <span class="mono">₹${total}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--slate-500);margin-bottom:6px;">
-        <span>Platform Settlement (15%)</span>
-        <span class="mono">₹${commission}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--slate-500);margin-bottom:10px;">
-        <span>Net Host Clearing</span>
-        <span class="mono">₹${ownerPayout}</span>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--slate-500);margin-bottom:6px;">
+        <span>Gate Protocol & Security Access</span>
+        <span style="color:var(--status-success-text);font-weight:600;">Included</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;color:var(--slate-900);padding-top:8px;border-top:1px solid var(--slate-300);">
         <span>Total Payable</span>
@@ -578,9 +592,8 @@ async function confirmBooking() {
   const startDate = new Date(`2026-01-01T${start}`);
   const endDate = new Date(`2026-01-01T${end}`);
   const hours = Math.max(0, (endDate - startDate) / (1000 * 60 * 60));
-  const total = Math.round(hours * currentSpace.price_per_hour);
-  const commission = Math.round(total * 0.15);
-  const ownerPayout = total - commission;
+  const commuterRate = currentSpace.customer_price || Math.ceil(currentSpace.price_per_hour / 0.90);
+  const total = Math.round(hours * commuterRate);
 
   pendingBooking = {
     space_id: currentSpace.id,
@@ -589,9 +602,8 @@ async function confirmBooking() {
     end_time: end,
     vehicle_number: vehicleNum,
     hours,
+    customer_rate: commuterRate,
     total_amount: total,
-    commission,
-    owner_payout: ownerPayout,
     spaceTitle: currentSpace.title,
     spaceAddress: currentSpace.address,
     spaceArea: currentSpace.area,
@@ -620,12 +632,12 @@ function openPaymentModal() {
 
     <div style="border:1px solid var(--slate-200);border-radius:var(--radius);padding:16px;margin-bottom:20px;">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:var(--slate-600);">
-        <span>Reservation Fee</span>
+        <span>Reservation Tariff (${b.hours} hrs &times; ₹${b.customer_rate}/hr)</span>
         <span class="mono">₹${b.total_amount}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;color:var(--slate-500);">
-        <span>Platform Commission (15% inclusive)</span>
-        <span class="mono">₹${b.commission}</span>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px;color:var(--slate-500);">
+        <span>Access Clearance & Security Pass</span>
+        <span style="color:var(--status-success-text);font-weight:600;">Included</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px dashed var(--slate-300);font-weight:800;font-size:16px;color:var(--slate-900);">
         <span>Total Payable (INR)</span>
@@ -662,18 +674,18 @@ function selectPaymentMethod(btn, method) {
   });
   btn.classList.add('active');
 
-  const upiSec = document.getElementById('upiPaySection');
-  if (upiSec) {
+  const paySection = document.getElementById('upiPaySection');
+  if (paySection) {
     if (method === 'upi') {
-      upiSec.innerHTML = `
+      paySection.innerHTML = `
         <label class="field-label">Virtual Payment Address (VPA / UPI ID)</label>
-        <input type="text" id="upiIdInput" class="form-control mono" value="${currentUser ? currentUser.phone + '@upi' : 'user@okhdfcbank'}">
+        <input type="text" id="upiIdInput" class="form-control mono" value="${currentUser ? currentUser.phone + '@upi' : 'user@okhdfcbank'}" placeholder="mobile@upi">
       `;
     } else {
-      upiSec.innerHTML = `
+      paySection.innerHTML = `
         <div style="margin-bottom:10px;">
           <label class="field-label">Card Number</label>
-          <input type="text" class="form-control mono" placeholder="4532 •••• •••• 8892" value="4532 9012 3456 8892">
+          <input type="text" class="form-control mono" value="4532 •••• •••• 8821" placeholder="4000 0000 0000 0000">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div><label class="field-label">Expiry (MM/YY)</label><input type="text" class="form-control mono" value="08/29"></div>
@@ -792,27 +804,67 @@ function closeGatePassModal() {
 
 // ==================== LIST SPACE ====================
 
+function updateTariffPreview(val) {
+  const preview = document.getElementById('tariffPreview');
+  const hostNet = document.getElementById('previewHostNet');
+  const commuterRate = document.getElementById('previewCommuterRate');
+  if (!preview || !hostNet || !commuterRate) return;
+
+  const num = Number(val);
+  if (!num || num <= 0) {
+    preview.style.display = 'none';
+    return;
+  }
+  const commuterPrice = Math.ceil(num / 0.90);
+  hostNet.textContent = `₹${num} / hr`;
+  commuterRate.textContent = `₹${commuterPrice} / hr`;
+  preview.style.display = 'block';
+}
+
 async function submitSpace(e) {
   e.preventDefault();
-  if (!currentUser) { showAuthModal('login'); return; }
+  if (!currentUser) {
+    showToast('Please sign in to register and list your parking space', 'error');
+    showAuthModal('login');
+    return;
+  }
+
+  const submitBtn = document.getElementById('spSubmitBtn') || e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn ? submitBtn.textContent : 'Complete Registration & List Asset';
 
   const days = Array.from(document.querySelectorAll('#spDays input:checked')).map(c => c.value).join(',');
+  const spPriceEl = document.getElementById('spPrice');
+  const priceVal = Number(spPriceEl?.value);
+  if (!priceVal || priceVal < 10) {
+    showToast('Please enter a valid hourly tariff (minimum ₹10)', 'error');
+    return;
+  }
 
   const space = {
-    title: document.getElementById('spTitle').value,
-    area: document.getElementById('spArea').value,
-    landmark: document.getElementById('spLandmark').value,
-    address: document.getElementById('spAddress').value,
-    vehicle_type: document.getElementById('spVehicle').value,
-    price_per_hour: Number(document.getElementById('spPrice').value),
-    available_from: document.getElementById('spFrom').value,
-    available_to: document.getElementById('spTo').value,
-    available_days: days,
-    description: document.getElementById('spDesc')?.value || '',
-    is_covered: document.getElementById('spCovered').checked,
-    has_cctv: document.getElementById('spCCTV').checked,
-    has_guard: document.getElementById('spGuard').checked
+    title: document.getElementById('spTitle')?.value || '',
+    area: document.getElementById('spArea')?.value || '',
+    landmark: document.getElementById('spLandmark')?.value || '',
+    address: document.getElementById('spAddress')?.value || '',
+    vehicle_type: document.getElementById('spVehicle')?.value || 'car',
+    price_per_hour: priceVal,
+    available_from: document.getElementById('spFrom')?.value || '09:00',
+    available_to: document.getElementById('spTo')?.value || '18:00',
+    available_days: days || 'Mon,Tue,Wed,Thu,Fri',
+    description: (document.getElementById('spDesc')?.value || '').trim(),
+    is_covered: document.getElementById('spCovered')?.checked || false,
+    has_cctv: document.getElementById('spCCTV')?.checked || false,
+    has_guard: document.getElementById('spGuard')?.checked || false
   };
+
+  if (!space.title || !space.area || !space.address) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Listing Bay on Inventory...';
+  }
 
   try {
     const res = await apiFetch('/api/spaces', {
@@ -821,14 +873,21 @@ async function submitSpace(e) {
       body: JSON.stringify(space)
     });
     if (res.ok) {
-      showToast('Parking bay registered and listed on inventory', 'success');
-      document.getElementById('listSpaceForm').reset();
+      showToast('Parking bay successfully registered and active!', 'success');
+      document.getElementById('listSpaceForm')?.reset();
+      const preview = document.getElementById('tariffPreview');
+      if (preview) preview.style.display = 'none';
       navigate('dashboard');
     } else {
-      showToast(res.error || 'Failed to list asset', 'error');
+      showToast(res.error || 'Failed to list asset. Please retry.', 'error');
     }
-  } catch (e) {
-    showToast('Connection error', 'error');
+  } catch (err) {
+    showToast('Connection error. Please try again.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
   }
 }
 
@@ -858,7 +917,7 @@ async function loadDashboard() {
       <div class="stat-card">
         <div class="stat-label">Net Host Clearing</div>
         <div class="stat-value mono">₹${dash.ownerStats?.total_earnings || 0}</div>
-        <div class="stat-footer">Cleared after 15% platform fee</div>
+        <div class="stat-footer">Cleared (90% net host yield)</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Active Host Bookings</div>
@@ -930,7 +989,7 @@ function renderDashTab(tab) {
         </div>
         <div style="text-align:right;">
           <div class="ledger-amount" style="color:var(--status-success-text);">+₹${b.owner_payout}</div>
-          <div style="font-size:11px;color:var(--slate-400);">Fee: ₹${b.commission}</div>
+          <div style="font-size:11px;color:var(--slate-400);">Platform Fee: ₹${b.commission}</div>
           <span class="badge badge-${b.status}">${b.status}</span>
         </div>
       </div>
@@ -943,23 +1002,29 @@ function renderDashTab(tab) {
       content.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--slate-400);"><p>No parking spaces registered yet.</p><button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="navigate('list-space')">Register a Bay</button></div>`;
       return;
     }
-    content.innerHTML = `<div class="card-grid">${spaces.map(s => `
-      <div class="space-card" style="padding:24px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-          <span class="space-locality-tag">${s.area}</span>
-          <span class="badge ${s.is_active ? 'badge-confirmed' : 'badge-cancelled'}">${s.is_active ? 'Active Bay' : 'Suspended'}</span>
+    content.innerHTML = `<div class="card-grid">${spaces.map(s => {
+      const commuterRate = s.customer_price || Math.ceil(s.price_per_hour / 0.90);
+      return `
+        <div class="space-card" style="padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+            <span class="space-locality-tag">${s.area}</span>
+            <span class="badge ${s.is_active ? 'badge-confirmed' : 'badge-cancelled'}">${s.is_active ? 'Active Bay' : 'Suspended'}</span>
+          </div>
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">${s.title}</h3>
+          <p style="font-size:12px;color:var(--slate-500);margin-bottom:14px;">${s.address}</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--slate-100);">
+            <div>
+              <div class="mono" style="font-size:17px;font-weight:700;color:var(--slate-900);">Net ₹${s.price_per_hour}/hr</div>
+              <div style="font-size:11px;color:var(--slate-500);">Commuter Tariff: ₹${commuterRate}/hr</div>
+            </div>
+            <span style="font-size:12px;color:var(--slate-500);">${s.total_bookings} Bookings</span>
+          </div>
+          <button class="btn ${s.is_active ? 'btn-secondary' : 'btn-dark'} btn-sm" style="width:100%;margin-top:14px;" onclick="toggleSpace(${s.id})">
+            ${s.is_active ? 'Suspend Availability' : 'Activate Space'}
+          </button>
         </div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">${s.title}</h3>
-        <p style="font-size:12px;color:var(--slate-500);margin-bottom:14px;">${s.address}</p>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--slate-100);">
-          <span class="mono" style="font-size:18px;font-weight:700;color:var(--slate-900);">₹${s.price_per_hour}/hr</span>
-          <span style="font-size:12px;color:var(--slate-500);">${s.total_bookings} Bookings Cleared</span>
-        </div>
-        <button class="btn ${s.is_active ? 'btn-secondary' : 'btn-dark'} btn-sm" style="width:100%;margin-top:14px;" onclick="toggleSpace(${s.id})">
-          ${s.is_active ? 'Suspend Availability' : 'Activate Space'}
-        </button>
-      </div>
-    `).join('')}</div>`;
+      `;
+    }).join('')}</div>`;
   }
 }
 
@@ -1023,7 +1088,7 @@ async function loadAdmin() {
         <div class="stat-footer">Total platform volume</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Platform Yield (15% Commission)</div>
+        <div class="stat-label">Platform Yield (10% Commission)</div>
         <div class="stat-value mono" style="color:var(--brand-accent);">₹${data.revenue?.total_commission || 0}</div>
         <div class="stat-footer">Net platform revenue</div>
       </div>
@@ -1096,5 +1161,5 @@ function showToast(message, type = '') {
   toast.className = `toast ${type}`;
   toast.textContent = message;
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3500);
+  setTimeout(() => toast.remove(), 4000);
 }

@@ -8,7 +8,7 @@ const { initDB, queryAll, queryOne, runSQL } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'parkease-pune-secret-2026';
-const COMMISSION_RATE = 0.15; // 15% commission
+const COMMISSION_RATE = 0.10; // 10% platform commission (invisible to commuter)
 
 // Middleware
 app.use(cors());
@@ -82,7 +82,10 @@ app.get('/api/spaces', (req, res) => {
 
   query += ' GROUP BY ps.id ORDER BY avg_rating DESC, ps.created_at DESC';
 
-  const spaces = queryAll(query, params);
+  const spaces = queryAll(query, params).map(s => ({
+    ...s,
+    customer_price: Math.ceil(s.price_per_hour / 0.90)
+  }));
   res.json(spaces);
 });
 
@@ -107,7 +110,11 @@ app.get('/api/spaces/:id', (req, res) => {
     ORDER BY r.created_at DESC
   `, [Number(req.params.id)]);
 
-  res.json({ ...space, reviews });
+  res.json({
+    ...space,
+    customer_price: Math.ceil(space.price_per_hour / 0.90),
+    reviews
+  });
 });
 
 app.post('/api/spaces', auth, (req, res) => {
@@ -115,7 +122,7 @@ app.post('/api/spaces', auth, (req, res) => {
   try {
     const result = runSQL(
       'INSERT INTO parking_spaces (owner_id, title, address, area, landmark, lat, lng, vehicle_type, price_per_hour, available_from, available_to, available_days, description, is_covered, has_cctv, has_guard) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      [req.user.id, title, address, area, landmark, lat || null, lng || null, vehicle_type || 'car', price_per_hour, available_from, available_to, available_days || 'Mon,Tue,Wed,Thu,Fri', description, is_covered ? 1 : 0, has_cctv ? 1 : 0, has_guard ? 1 : 0]
+      [req.user.id, title, address, area, landmark, lat || null, lng || null, vehicle_type || 'car', price_per_hour, available_from, available_to, available_days || 'Mon,Tue,Wed,Thu,Fri', description || '', is_covered ? 1 : 0, has_cctv ? 1 : 0, has_guard ? 1 : 0]
     );
     res.json({ id: result.lastInsertRowid, message: 'Parking space listed successfully!' });
   } catch (e) {
@@ -134,7 +141,10 @@ app.get('/api/my-spaces', auth, (req, res) => {
     LEFT JOIN bookings b ON ps.id = b.space_id
     WHERE ps.owner_id = ?
     GROUP BY ps.id
-  `, [req.user.id]);
+  `, [req.user.id]).map(s => ({
+    ...s,
+    customer_price: Math.ceil(s.price_per_hour / 0.90)
+  }));
   res.json(spaces);
 });
 
@@ -159,9 +169,11 @@ app.post('/api/bookings', auth, (req, res) => {
   const hours = (end - start) / (1000 * 60 * 60);
   if (hours <= 0) return res.status(400).json({ error: 'Invalid time range' });
 
-  const total_amount = Math.round(hours * space.price_per_hour);
-  const commission = Math.round(total_amount * COMMISSION_RATE);
-  const owner_payout = total_amount - commission;
+  // Customer tariff includes the hidden 10% platform commission markup (e.g. Host gets 72/hr, Commuter pays 80/hr)
+  const customer_rate = Math.ceil(space.price_per_hour / 0.90);
+  const total_amount = Math.round(hours * customer_rate);
+  const commission = Math.round(total_amount * COMMISSION_RATE); // 10% platform fee
+  const owner_payout = total_amount - commission; // 90% net host clearing
 
   // Check for conflicting bookings
   const conflict = queryOne(`
@@ -179,7 +191,7 @@ app.post('/api/bookings', auth, (req, res) => {
     );
     res.json({
       id: result.lastInsertRowid,
-      total_amount, commission, owner_payout,
+      total_amount,
       message: 'Booking confirmed!'
     });
   } catch (e) {
@@ -189,7 +201,8 @@ app.post('/api/bookings', auth, (req, res) => {
 
 app.get('/api/my-bookings', auth, (req, res) => {
   const bookings = queryAll(`
-    SELECT b.*, ps.title, ps.address, ps.area, ps.vehicle_type,
+    SELECT b.id, b.space_id, b.booking_date, b.start_time, b.end_time, b.hours, b.total_amount, b.status, b.vehicle_number, b.created_at,
+      ps.title, ps.address, ps.area, ps.vehicle_type,
       u.name as owner_name, u.phone as owner_phone
     FROM bookings b
     JOIN parking_spaces ps ON b.space_id = ps.id
@@ -259,7 +272,7 @@ app.get('/api/dashboard', auth, (req, res) => {
   res.json({ ownerStats, renterStats, spaceCount: spaceCount ? spaceCount.count : 0 });
 });
 
-// Admin analytics
+// Admin analytics (Institutional Platform Clearing Ledger)
 app.get('/api/admin/analytics', (req, res) => {
   const totalUsers = queryOne('SELECT COUNT(*) as count FROM users');
   const totalSpaces = queryOne('SELECT COUNT(*) as count FROM parking_spaces WHERE is_active = 1');
@@ -306,7 +319,11 @@ app.get('/api/areas', (req, res) => {
     SELECT area, COUNT(*) as space_count, MIN(price_per_hour) as min_price, MAX(price_per_hour) as max_price
     FROM parking_spaces WHERE is_active = 1
     GROUP BY area ORDER BY space_count DESC
-  `);
+  `).map(a => ({
+    ...a,
+    min_price: Math.ceil(a.min_price / 0.90),
+    max_price: Math.ceil(a.max_price / 0.90)
+  }));
   res.json(areas);
 });
 
