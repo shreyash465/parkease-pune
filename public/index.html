@@ -516,8 +516,21 @@
             <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
           </div>
           <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Sign In</button>
-          <div style="text-align:center;margin-top:14px;">
-            <span style="font-size:12px;color:var(--slate-400);">Demo Account: rahul@demo.com / demo123</span>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--slate-100);display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--slate-50);padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--slate-200);">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--slate-900);">Vishwajeet More <span style="font-size:10px;color:var(--brand-primary);font-weight:700;text-transform:uppercase;background:rgba(37,99,235,0.08);padding:2px 6px;border-radius:4px;">Aenrox Founder</span></div>
+                <div style="font-size:11px;color:var(--slate-500);font-family:var(--font-mono);">vishwajeet@aenrox.com</div>
+              </div>
+              <button type="button" class="btn btn-dark btn-sm" style="font-size:11px;padding:4px 10px;" onclick="quickFillAuth('vishwajeet@aenrox.com', 'aenroxadmin123')">Fill Login</button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;">
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--slate-700);">Rahul Sharma <span style="font-size:10px;color:var(--slate-400);">Demo Host</span></div>
+                <div style="font-size:11px;color:var(--slate-400);font-family:var(--font-mono);">rahul@demo.com</div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px;" onclick="quickFillAuth('rahul@demo.com', 'demo123')">Fill Login</button>
+            </div>
           </div>
         </form>
 

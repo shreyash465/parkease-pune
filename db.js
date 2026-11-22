@@ -109,13 +109,17 @@ function seedDemoData() {
   if (result[0].values[0][0] > 0) return;
 
   const hashedPass = bcrypt.hashSync('demo123', 10);
+  const founderPass = bcrypt.hashSync('aenroxadmin123', 10);
 
-  // Demo users
-  db.run('INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)', ['Rahul Sharma', 'rahul@demo.com', '9876543210', hashedPass]);
-  db.run('INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)', ['Priya Deshmukh', 'priya@demo.com', '9876543211', hashedPass]);
-  db.run('INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)', ['Amit Kulkarni', 'amit@demo.com', '9876543212', hashedPass]);
-  db.run('INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)', ['Sneha Patil', 'sneha@demo.com', '9876543213', hashedPass]);
-  db.run('INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)', ['Vikram Joshi', 'vikram@demo.com', '9876543214', hashedPass]);
+  // Demo users (IDs 1-5 — spaces/bookings reference these owner_ids)
+  db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Rahul Sharma', 'rahul@demo.com', '9876543210', hashedPass, 'both']);
+  db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Priya Deshmukh', 'priya@demo.com', '9876543211', hashedPass, 'both']);
+  db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Amit Kulkarni', 'amit@demo.com', '9876543212', hashedPass, 'both']);
+  db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Sneha Patil', 'sneha@demo.com', '9876543213', hashedPass, 'both']);
+  db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Vikram Joshi', 'vikram@demo.com', '9876543214', hashedPass, 'both']);
+
+  // Executive Admin & Founder — ID 6 (inserted after demo users to preserve owner_id mappings)
+  db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Vishwajeet More', 'vishwajeet@aenrox.com', '9822012345', founderPass, 'admin']);
 
   // Demo parking spaces (Host rate; commuter pays host_rate / 0.90 with 10% commission included)
   const spaces = [

@@ -77,6 +77,14 @@ function showAuthModal(tab = 'login') {
   switchAuthTab(tab);
 }
 
+function quickFillAuth(email, pass) {
+  switchAuthTab('login');
+  const emailEl = document.getElementById('loginEmail');
+  const passEl = document.getElementById('loginPass');
+  if (emailEl) emailEl.value = email;
+  if (passEl) passEl.value = pass;
+}
+
 function closeAuthModal() {
   const modal = document.getElementById('authModal');
   if (modal) modal.style.display = 'none';
