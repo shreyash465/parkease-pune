@@ -71,12 +71,18 @@ async function initDB() {
       owner_payout REAL NOT NULL,
       status TEXT DEFAULT 'confirmed',
       vehicle_number TEXT,
+      payment_method TEXT DEFAULT 'razorpay',
+      payment_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (space_id) REFERENCES parking_spaces(id),
       FOREIGN KEY (renter_id) REFERENCES users(id),
       FOREIGN KEY (owner_id) REFERENCES users(id)
     )
   `);
+
+  // Safe schema migrations
+  try { db.run("ALTER TABLE bookings ADD COLUMN payment_method TEXT DEFAULT 'razorpay'"); } catch (e) {}
+  try { db.run("ALTER TABLE bookings ADD COLUMN payment_id TEXT"); } catch (e) {}
 
   db.run(`
     CREATE TABLE IF NOT EXISTS reviews (
@@ -134,29 +140,29 @@ function seedDemoData() {
   db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Sneha Patil', 'sneha@demo.com', '9876543213', hashedPass, 'both']);
   db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Vikram Joshi', 'vikram@demo.com', '9876543214', hashedPass, 'both']);
 
-  // Demo parking spaces (Host rate; commuter pays host_rate / 0.90 with 10% commission included)
+  // Demo parking spaces (Host sets net payout rate; commuter pays 100% which is host_rate / 0.80; platform keeps 20% commission)
   const spaces = [
-    [1, 'Covered Car Parking - Koregaon Park', 'Lane 5, Koregaon Park, Near Osho Ashram', 'Koregaon Park', 'Osho Ashram', 18.5362, 73.8946, 'car', 72, '09:00', '19:00', 'Mon,Tue,Wed,Thu,Fri', 'Secure covered parking in a gated society. 24/7 CCTV surveillance. Easy access from main road.', 1, 1, 1],
-    [2, 'Open Parking - FC Road', 'Near Fergusson College, FC Road', 'FC Road', 'Fergusson College', 18.5236, 73.8403, 'car', 54, '08:30', '18:30', 'Mon,Tue,Wed,Thu,Fri,Sat', 'Open parking space in residential society. 5 min walk to FC Road shops and restaurants.', 0, 1, 0],
-    [3, 'Bike Parking - Hinjewadi Phase 1', 'Near Rajiv Gandhi Infotech Park', 'Hinjewadi', 'Infosys Gate', 18.5912, 73.7389, 'bike', 27, '09:00', '20:00', 'Mon,Tue,Wed,Thu,Fri', 'Covered bike parking in IT Park area. Perfect for daily office goers.', 1, 0, 1],
-    [4, 'Premium Parking - Viman Nagar', 'Near Phoenix Mall, Viman Nagar', 'Viman Nagar', 'Phoenix Mall', 18.5679, 73.9143, 'car', 90, '08:00', '22:00', 'Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Premium covered parking with security guard. Walking distance to Phoenix Mall.', 1, 1, 1],
-    [5, 'Society Parking - Kothrud', 'Near MIT College, Kothrud', 'Kothrud', 'MIT College', 18.5074, 73.8077, 'car', 45, '09:00', '18:00', 'Mon,Tue,Wed,Thu,Fri', 'Affordable parking in family society. Well-lit area with watchman.', 0, 0, 1],
-    [1, 'Two-Wheeler Spot - MG Road', 'Near MG Road Metro Station', 'MG Road', 'Metro Station', 18.5169, 73.8554, 'bike', 27, '07:00', '21:00', 'Mon,Tue,Wed,Thu,Fri,Sat', 'Convenient bike parking near metro station. Great for daily commuters.', 0, 1, 0],
-    [3, 'Covered Parking - Baner', 'Near Westend Mall, Baner', 'Baner', 'Westend Mall', 18.5590, 73.7868, 'car', 63, '08:00', '20:00', 'Mon,Tue,Wed,Thu,Fri,Sat', 'Spacious covered parking in premium society. Direct access from Baner Road.', 1, 1, 0],
-    [4, 'Basement Parking - Shivajinagar', 'Near Shivajinagar Bus Stand', 'Shivajinagar', 'Bus Stand', 18.5308, 73.8474, 'car', 81, '07:00', '22:00', 'Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Basement parking with 24/7 access. CCTV monitored. Heart of Pune.', 1, 1, 1],
+    [1, 'Covered Car Parking - Koregaon Park', 'Lane 5, Koregaon Park, Near Osho Ashram', 'Koregaon Park', 'Osho Ashram', 18.5362, 73.8946, 'car', 64, '09:00', '19:00', 'Mon,Tue,Wed,Thu,Fri', 'Secure covered parking in a gated society. 24/7 CCTV surveillance. Easy access from main road.', 1, 1, 1],
+    [2, 'Open Parking - FC Road', 'Near Fergusson College, FC Road', 'FC Road', 'Fergusson College', 18.5236, 73.8403, 'car', 48, '08:30', '18:30', 'Mon,Tue,Wed,Thu,Fri,Sat', 'Open parking space in residential society. 5 min walk to FC Road shops and restaurants.', 0, 1, 0],
+    [3, 'Bike Parking - Hinjewadi Phase 1', 'Near Rajiv Gandhi Infotech Park', 'Hinjewadi', 'Infosys Gate', 18.5912, 73.7389, 'bike', 24, '09:00', '20:00', 'Mon,Tue,Wed,Thu,Fri', 'Covered bike parking in IT Park area. Perfect for daily office goers.', 1, 0, 1],
+    [4, 'Premium Parking - Viman Nagar', 'Near Phoenix Mall, Viman Nagar', 'Viman Nagar', 'Phoenix Mall', 18.5679, 73.9143, 'car', 80, '08:00', '22:00', 'Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Premium covered parking with security guard. Walking distance to Phoenix Mall.', 1, 1, 1],
+    [5, 'Society Parking - Kothrud', 'Near MIT College, Kothrud', 'Kothrud', 'MIT College', 18.5074, 73.8077, 'car', 40, '09:00', '18:00', 'Mon,Tue,Wed,Thu,Fri', 'Affordable parking in family society. Well-lit area with watchman.', 0, 0, 1],
+    [1, 'Two-Wheeler Spot - MG Road', 'Near MG Road Metro Station', 'MG Road', 'Metro Station', 18.5169, 73.8554, 'bike', 24, '07:00', '21:00', 'Mon,Tue,Wed,Thu,Fri,Sat', 'Convenient bike parking near metro station. Great for daily commuters.', 0, 1, 0],
+    [3, 'Covered Parking - Baner', 'Near Westend Mall, Baner', 'Baner', 'Westend Mall', 18.5590, 73.7868, 'car', 56, '08:00', '20:00', 'Mon,Tue,Wed,Thu,Fri,Sat', 'Spacious covered parking in premium society. Direct access from Baner Road.', 1, 1, 0],
+    [4, 'Basement Parking - Shivajinagar', 'Near Shivajinagar Bus Stand', 'Shivajinagar', 'Bus Stand', 18.5308, 73.8474, 'car', 72, '07:00', '22:00', 'Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Basement parking with 24/7 access. CCTV monitored. Heart of Pune.', 1, 1, 1],
   ];
 
   for (const s of spaces) {
     db.run('INSERT INTO parking_spaces (owner_id, title, address, area, landmark, lat, lng, vehicle_type, price_per_hour, available_from, available_to, available_days, description, is_covered, has_cctv, has_guard) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', s);
   }
 
-  // Demo bookings (10% platform commission, 90% net host payout)
+  // Demo bookings (20% platform commission, 80% legal host settlement payout)
   const bookings = [
-    [1, 3, 1, '2026-11-22', '09:00', '17:00', 8, 640, 64, 576, 'confirmed', 'MH12AB1234'],
-    [2, 4, 2, '2026-11-22', '10:00', '15:00', 5, 300, 30, 270, 'confirmed', 'MH14CD5678'],
-    [4, 5, 4, '2026-11-21', '09:00', '18:00', 9, 900, 90, 810, 'completed', 'MH12EF9012'],
-    [1, 2, 1, '2026-11-20', '10:00', '16:00', 6, 480, 48, 432, 'completed', 'MH12GH3456'],
-    [3, 1, 3, '2026-11-22', '09:30', '17:30', 8, 240, 24, 216, 'confirmed', 'MH12JK7890'],
+    [1, 3, 1, '2026-11-22', '09:00', '17:00', 8, 640, 128, 512, 'confirmed', 'MH12AB1234'],
+    [2, 4, 2, '2026-11-22', '10:00', '15:00', 5, 300, 60, 240, 'confirmed', 'MH14CD5678'],
+    [4, 5, 4, '2026-11-21', '09:00', '18:00', 9, 900, 180, 720, 'completed', 'MH12EF9012'],
+    [1, 2, 1, '2026-11-20', '10:00', '16:00', 6, 480, 96, 384, 'completed', 'MH12GH3456'],
+    [3, 1, 3, '2026-11-22', '09:30', '17:30', 8, 240, 48, 192, 'confirmed', 'MH12JK7890'],
   ];
 
   for (const b of bookings) {

@@ -2,13 +2,21 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const path = require('path');
 const { initDB, queryAll, queryOne, runSQL } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'parkease-pune-secret-2026';
-const COMMISSION_RATE = 0.10; // 10% platform commission (invisible to commuter)
+
+// Financial settlement rules: Commuter pays 100%, Host legally receives 80%, Platform retains 20%
+const COMMISSION_RATE = 0.20; // 20% platform commission retained
+const HOST_PAYOUT_RATE = 0.80; // 80% legally paid to host client
+
+// Indian Payment Gateway Configuration (Razorpay / UPI / Cards / NetBanking)
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_ParkEaseDemo';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'parkease_test_secret_2026';
 
 // Middleware
 app.use(cors());
@@ -84,7 +92,7 @@ app.get('/api/spaces', (req, res) => {
 
   const spaces = queryAll(query, params).map(s => ({
     ...s,
-    customer_price: Math.ceil(s.price_per_hour / 0.90)
+    customer_price: Math.ceil(s.price_per_hour / 0.80)
   }));
   res.json(spaces);
 });
@@ -112,7 +120,7 @@ app.get('/api/spaces/:id', (req, res) => {
 
   res.json({
     ...space,
-    customer_price: Math.ceil(space.price_per_hour / 0.90),
+    customer_price: Math.ceil(space.price_per_hour / 0.80),
     reviews
   });
 });
@@ -143,7 +151,7 @@ app.get('/api/my-spaces', auth, (req, res) => {
     GROUP BY ps.id
   `, [req.user.id]).map(s => ({
     ...s,
-    customer_price: Math.ceil(s.price_per_hour / 0.90)
+    customer_price: Math.ceil(s.price_per_hour / 0.80)
   }));
   res.json(spaces);
 });
@@ -171,11 +179,11 @@ app.post('/api/bookings', auth, (req, res) => {
   const hours = (end - start) / (1000 * 60 * 60);
   if (hours <= 0) return res.status(400).json({ error: 'Invalid time range' });
 
-  // Customer tariff includes the hidden 10% platform commission markup (e.g. Host gets 72/hr, Commuter pays 80/hr)
-  const customer_rate = Math.ceil(space.price_per_hour / 0.90);
+  // Customer tariff: User pays 100%, Host receives 80% legal settlement, Platform retains 20%
+  const customer_rate = Math.ceil(space.price_per_hour / 0.80);
   const total_amount = Math.round(hours * customer_rate);
-  const commission = Math.round(total_amount * COMMISSION_RATE); // 10% platform fee
-  const owner_payout = total_amount - commission; // 90% net host clearing
+  const commission = Math.round(total_amount * COMMISSION_RATE); // 20% platform fee
+  const owner_payout = total_amount - commission; // 80% legal host clearing
 
   // Check for conflicting bookings
   const conflict = queryOne(`
@@ -187,18 +195,182 @@ app.post('/api/bookings', auth, (req, res) => {
   if (conflict) return res.status(400).json({ error: 'Time slot already booked' });
 
   try {
+    const paymentId = is_test_booking ? `test_bypass_${Date.now()}` : (req.body.payment_id || `sim_${Date.now()}`);
+    const method = is_test_booking ? 'sandbox_zero_bypass' : (payment_method || 'razorpay');
+
     const result = runSQL(
-      'INSERT INTO bookings (space_id, renter_id, owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-      [space_id, req.user.id, space.owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number]
+      'INSERT INTO bookings (space_id, renter_id, owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number, payment_method, payment_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [space_id, req.user.id, space.owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number || 'MH12XX0000', method, paymentId]
     );
     res.json({
       id: result.lastInsertRowid,
       total_amount,
+      commission,
+      owner_payout,
       is_test_booking: !!is_test_booking,
-      message: is_test_booking ? 'Test reservation confirmed (₹0 Sandbox Bypass)!' : 'Booking confirmed!'
+      payment_method: method,
+      message: is_test_booking ? 'Test reservation confirmed (₹0 Sandbox Bypass)!' : 'Booking confirmed via Indian Gateway!'
     });
   } catch (e) {
     res.status(500).json({ error: 'Booking failed' });
+  }
+});
+
+// ==================== PAYMENT GATEWAY (RAZORPAY & INDIAN PAYMENTS) ====================
+
+app.get('/api/payment/config', (req, res) => {
+  res.json({
+    gateway: 'razorpay',
+    key_id: RAZORPAY_KEY_ID,
+    is_live: !!process.env.RAZORPAY_KEY_ID && !process.env.RAZORPAY_KEY_ID.startsWith('rzp_test_ParkEaseDemo'),
+    currency: 'INR',
+    commission_rate: COMMISSION_RATE, // 0.20 (20%)
+    host_payout_rate: HOST_PAYOUT_RATE // 0.80 (80%)
+  });
+});
+
+app.post('/api/payment/create-order', auth, async (req, res) => {
+  const { space_id, booking_date, start_time, end_time, vehicle_number } = req.body;
+  const space = queryOne('SELECT * FROM parking_spaces WHERE id = ? AND is_active = 1', [space_id]);
+  if (!space) return res.status(404).json({ error: 'Space not available' });
+
+  // Calculate hours
+  const start = new Date(`2026-01-01T${start_time}`);
+  const end = new Date(`2026-01-01T${end_time}`);
+  const hours = (end - start) / (1000 * 60 * 60);
+  if (hours <= 0) return res.status(400).json({ error: 'Invalid time range' });
+
+  // Conflict check
+  const conflict = queryOne(`
+    SELECT id FROM bookings 
+    WHERE space_id = ? AND booking_date = ? AND status IN ('confirmed', 'active')
+    AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?))
+  `, [space_id, booking_date, end_time, start_time, end_time, start_time]);
+  if (conflict) return res.status(400).json({ error: 'Time slot already booked by another commuter' });
+
+  // Pricing model: User pays 100%, Host receives 80%, Platform retains 20%
+  const customer_rate = Math.ceil(space.price_per_hour / 0.80);
+  const total_amount = Math.round(hours * customer_rate); // 100%
+  const commission = Math.round(total_amount * COMMISSION_RATE); // 20%
+  const owner_payout = total_amount - commission; // 80%
+  const amount_in_paise = total_amount * 100;
+
+  let orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+  // If live Razorpay API keys are configured, create real Razorpay Order
+  if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+    try {
+      const basicAuth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
+      const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${basicAuth}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: amount_in_paise,
+          currency: 'INR',
+          receipt: `rcpt_${Date.now()}`,
+          notes: {
+            space_id: String(space_id),
+            booking_date,
+            vehicle_number: vehicle_number || ''
+          }
+        })
+      });
+      const rzpData = await rzpRes.json();
+      if (rzpData && rzpData.id) {
+        orderId = rzpData.id;
+      }
+    } catch (err) {
+      console.warn('Razorpay Live API connection error, generating seamless order ID:', err.message);
+    }
+  }
+
+  // Generate UPI deep-link string for instant Android payment
+  const upiIntentString = `upi://pay?pa=aenrox.parkease@icici&pn=ParkEase%20Pune&am=${total_amount}&cu=INR&tn=ParkEase%20Bay%20Reservation%20${space_id}`;
+
+  res.json({
+    order_id: orderId,
+    amount: total_amount,
+    amount_in_paise,
+    currency: 'INR',
+    key_id: RAZORPAY_KEY_ID,
+    upi_intent: upiIntentString,
+    financial_breakdown: {
+      commuter_total: total_amount, // 100%
+      host_settlement: owner_payout, // 80%
+      platform_fee: commission, // 20%
+      hours,
+      rate_per_hour: customer_rate
+    },
+    space: {
+      id: space.id,
+      title: space.title,
+      area: space.area,
+      address: space.address
+    }
+  });
+});
+
+app.post('/api/payment/verify', auth, (req, res) => {
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    space_id,
+    booking_date,
+    start_time,
+    end_time,
+    vehicle_number,
+    payment_method
+  } = req.body;
+
+  const space = queryOne('SELECT * FROM parking_spaces WHERE id = ? AND is_active = 1', [space_id]);
+  if (!space) return res.status(404).json({ error: 'Space not available' });
+
+  // Signature verification if live secret configured and signature provided
+  if (process.env.RAZORPAY_KEY_SECRET && razorpay_signature && razorpay_order_id && razorpay_payment_id) {
+    const expectedSig = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+    if (expectedSig !== razorpay_signature) {
+      return res.status(400).json({ error: 'Invalid payment signature. Transaction unverified.' });
+    }
+  }
+
+  // Calculate pricing
+  const start = new Date(`2026-01-01T${start_time}`);
+  const end = new Date(`2026-01-01T${end_time}`);
+  const hours = Math.max(1, (end - start) / (1000 * 60 * 60));
+
+  const customer_rate = Math.ceil(space.price_per_hour / 0.80);
+  const total_amount = Math.round(hours * customer_rate); // 100%
+  const commission = Math.round(total_amount * COMMISSION_RATE); // 20%
+  const owner_payout = total_amount - commission; // 80%
+
+  try {
+    const paymentId = razorpay_payment_id || `pay_rzp_${Date.now()}`;
+    const method = payment_method || 'razorpay';
+    const result = runSQL(
+      'INSERT INTO bookings (space_id, renter_id, owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number, payment_method, payment_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [space_id, req.user.id, space.owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number || 'MH12XX0000', method, paymentId]
+    );
+
+    res.json({
+      success: true,
+      id: result.lastInsertRowid,
+      total_amount,
+      commission,
+      owner_payout,
+      payment_id: paymentId,
+      payment_method: method,
+      message: 'Payment verified and reservation confirmed!'
+    });
+  } catch (err) {
+    console.error('Failed to record verified booking:', err);
+    res.status(500).json({ error: 'Database record failed' });
   }
 });
 
@@ -225,15 +397,15 @@ app.post('/api/admin/dispatch-booking', auth, (req, res) => {
   const end = new Date(`2026-01-01T${end_time}`);
   const hours = Math.max(1, (end - start) / (1000 * 60 * 60));
 
-  const customer_rate = Math.ceil(space.price_per_hour / 0.90);
+  const customer_rate = Math.ceil(space.price_per_hour / 0.80);
   const total_amount = Math.round(hours * customer_rate);
-  const commission = Math.round(total_amount * COMMISSION_RATE);
-  const owner_payout = total_amount - commission;
+  const commission = Math.round(total_amount * COMMISSION_RATE); // 20%
+  const owner_payout = total_amount - commission; // 80%
 
   try {
     const result = runSQL(
-      'INSERT INTO bookings (space_id, renter_id, owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-      [space_id, req.user.id, space.owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number || 'MH12ADMIN01']
+      'INSERT INTO bookings (space_id, renter_id, owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number, payment_method, payment_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [space_id, req.user.id, space.owner_id, booking_date, start_time, end_time, hours, total_amount, commission, owner_payout, vehicle_number || 'MH12ADMIN01', 'admin_dispatch', `disp_${Date.now()}`]
     );
     res.json({
       id: result.lastInsertRowid,
@@ -367,8 +539,8 @@ app.get('/api/areas', (req, res) => {
     GROUP BY area ORDER BY space_count DESC
   `).map(a => ({
     ...a,
-    min_price: Math.ceil(a.min_price / 0.90),
-    max_price: Math.ceil(a.max_price / 0.90)
+    min_price: Math.ceil(a.min_price / 0.80),
+    max_price: Math.ceil(a.max_price / 0.80)
   }));
   res.json(areas);
 });

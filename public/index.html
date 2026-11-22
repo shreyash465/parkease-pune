@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ParkEase — Decentralized Urban Parking Network</title>
-  <link rel="stylesheet" href="/css/style.css?v=20261122_5">
+  <link rel="stylesheet" href="/css/style.css?v=20261122_6">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Razorpay Standard Indian Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F172A'/><text x='50%' y='68%' font-size='56' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'>P</text></svg>">
 </head>
 <body>
@@ -53,7 +55,7 @@
                 <div class="hero-metric-lbl">Key Commercial Hubs</div>
               </div>
               <div>
-                <div class="hero-metric-val">10%</div>
+                <div class="hero-metric-val">20%</div>
                 <div class="hero-metric-lbl">Platform Clearing Fee</div>
               </div>
             </div>
@@ -159,7 +161,7 @@
           <div style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:24px;">
             <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--brand-accent);margin-bottom:12px;">04 / CLEARING</div>
             <h3 style="font-size:15px;font-weight:700;color:var(--slate-900);margin-bottom:8px;">Automated Settlement</h3>
-            <p style="font-size:13px;color:var(--slate-600);line-height:1.6;">90% net yield cleared directly to host account; 10% platform fee automatically retained.</p>
+            <p style="font-size:13px;color:var(--slate-600);line-height:1.6;">80% net yield legally settled to host; 20% platform clearing fee automatically retained.</p>
           </div>
         </div>
       </div>
@@ -332,7 +334,7 @@
                     <strong style="color:var(--brand-accent);font-weight:700;" id="previewCommuterRate">₹0 / hr</strong>
                   </div>
                   <div style="font-size:11px;color:var(--slate-400);margin-top:6px;border-top:1px dashed var(--slate-200);padding-top:4px;">
-                    Includes standard 10% platform access & gate verification (hidden from commuter).
+                    Commuter pays 100%; platform retains 20% clearing fee and legally pays host 80% net.
                   </div>
                 </div>
               </div>
@@ -484,7 +486,9 @@
                 <th>Date</th>
                 <th>Duration</th>
                 <th>Gross (INR)</th>
-                <th>Commission (10%)</th>
+                <th>Commission (20%)</th>
+                <th>Host Payout (80%)</th>
+                <th>Payment Mode</th>
                 <th>Settlement Status</th>
               </tr>
             </thead>
@@ -617,6 +621,6 @@
     </div>
   </nav>
 
-  <script src="/js/app.js?v=20261122_5"></script>
+  <script src="/js/app.js?v=20261122_6"></script>
 </body>
 </html>
