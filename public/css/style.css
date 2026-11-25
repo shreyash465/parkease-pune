@@ -976,11 +976,11 @@ table tr:last-child td {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  min-height: 60px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--white);
   border-top: 1px solid var(--slate-200);
   z-index: 100;
-  padding: 0;
   box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.06);
 }
 
@@ -1042,7 +1042,8 @@ table tr:last-child td {
 @media (max-width: 640px) {
   /* Body padding for bottom bar */
   body {
-    padding-bottom: 64px;
+    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    overscroll-behavior-y: contain;
   }
 
   /* Show mobile bottom tab bar */

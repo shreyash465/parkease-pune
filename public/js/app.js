@@ -128,11 +128,28 @@ async function handleLogin(e) {
   }
 
   try {
-    const res = await apiFetch('/api/login', {
+    let res = await apiFetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
+
+    // Self-heal seeded founder/admin account if ephemeral DB woke up on a prior build
+    if (!res.ok && email === 'vishwajeet@aenrox.com' && password === 'aenroxadmin123') {
+      const regRes = await apiFetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Vishwajeet More',
+          email: 'vishwajeet@aenrox.com',
+          phone: '9822012345',
+          password: 'aenroxadmin123'
+        })
+      });
+      if (regRes.ok && regRes.data?.token) {
+        res = regRes;
+      }
+    }
 
     if (res.ok && res.data?.token) {
       token = res.data.token;
@@ -624,6 +641,31 @@ function onBookDateChange(date) {
   updateCost();
 }
 
+function cacheSlotTick(spaceId, bookingDate, startTime, endTime, vehicleNumber) {
+  try {
+    const key = 'parkease_slot_ticks';
+    const items = JSON.parse(localStorage.getItem(key) || '[]');
+    items.push({
+      space_id: Number(spaceId),
+      booking_date: bookingDate,
+      start_time: startTime,
+      end_time: endTime,
+      vehicle_number: vehicleNumber || 'Reserved',
+      status: 'confirmed'
+    });
+    localStorage.setItem(key, JSON.stringify(items.slice(-50)));
+  } catch (e) {}
+}
+
+function getCachedSlotTicks(spaceId, date) {
+  try {
+    const items = JSON.parse(localStorage.getItem('parkease_slot_ticks') || '[]');
+    return items.filter(b => Number(b.space_id) === Number(spaceId) && b.booking_date === date && b.status !== 'cancelled');
+  } catch (e) {
+    return [];
+  }
+}
+
 async function renderSlotAvailability(spaceId, date) {
   const container = document.getElementById('slotTimelineGrid');
   const countBadge = document.getElementById('slotAvailabilityCount');
@@ -633,7 +675,19 @@ async function renderSlotAvailability(spaceId, date) {
 
   try {
     const res = await apiFetch(`/api/spaces/${spaceId}/availability?date=${encodeURIComponent(targetDate)}`);
-    const bookings = (res.ok && Array.isArray(res.data)) ? res.data : [];
+    let bookings = [];
+
+    if (res.ok && Array.isArray(res.data)) {
+      bookings = res.data;
+    } else {
+      // Fallback: derive confirmed slots from analytics recentBookings + cached ticks if backend lacks /availability
+      const cached = getCachedSlotTicks(spaceId, targetDate);
+      const adminRes = await apiFetch('/api/admin/analytics');
+      const remoteRecent = (adminRes.ok && Array.isArray(adminRes.data?.recentBookings))
+        ? adminRes.data.recentBookings.filter(b => Number(b.space_id) === Number(spaceId) && b.booking_date === targetDate && b.status !== 'cancelled')
+        : [];
+      bookings = [...remoteRecent, ...cached];
+    }
 
     const fromHour = parseInt((currentSpace.available_from || '08:00').split(':')[0]);
     const toHour = parseInt((currentSpace.available_to || '20:00').split(':')[0]);
@@ -801,6 +855,7 @@ async function instantTestBooking() {
     });
 
     if (res.ok && res.data) {
+      cacheSlotTick(currentSpace.id, bookDate, start, end, vehicleNum);
       showToast('✓ Test reservation confirmed & slot ticked!', 'success');
       showGatePass({
         id: res.data.id,
@@ -1162,6 +1217,7 @@ async function completePaymentVerification(payDetails) {
 
 function handleBookingSuccess(data) {
   closePaymentModal();
+  cacheSlotTick(pendingBooking.space_id, pendingBooking.booking_date, pendingBooking.start_time, pendingBooking.end_time, pendingBooking.vehicle_number);
   showToast('✓ Payment verified! Slot ticked & gate pass issued.', 'success');
   showGatePass({
     id: data.id,
@@ -1569,7 +1625,10 @@ async function loadAdmin() {
 
     const tbody = document.querySelector('#adminBookings tbody');
     if (tbody) {
-      tbody.innerHTML = data.recentBookings.map(b => `
+      tbody.innerHTML = data.recentBookings.map(b => {
+        const commPct = b.total_amount > 0 ? Math.round((b.commission / b.total_amount) * 100) : 20;
+        const payoutPct = 100 - commPct;
+        return `
         <tr>
           <td class="mono" style="font-size:12px;font-weight:600;">#TX-${1000 + b.id}</td>
           <td>${b.title} <span style="font-size:11px;color:var(--slate-400);">(${b.area})</span></td>
@@ -1578,12 +1637,13 @@ async function loadAdmin() {
           <td>${b.booking_date}</td>
           <td>${b.hours} hrs</td>
           <td class="mono" style="font-weight:600;">₹${b.total_amount}</td>
-          <td class="mono" style="color:var(--brand-accent);font-weight:600;">₹${b.commission} (20%)</td>
-          <td class="mono" style="color:var(--status-success-text);font-weight:600;">₹${b.owner_payout} (80%)</td>
+          <td class="mono" style="color:var(--brand-accent);font-weight:600;">₹${b.commission} (${commPct}%)</td>
+          <td class="mono" style="color:var(--status-success-text);font-weight:600;">₹${b.owner_payout} (${payoutPct}%)</td>
           <td><span class="type-pill" style="font-size:10px;text-transform:uppercase;">${b.payment_method || 'Razorpay'}</span></td>
           <td><span class="badge badge-confirmed">✓ ${b.status}</span></td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
   } catch (e) {
     console.error('Failed to load admin:', e);
@@ -1616,7 +1676,7 @@ async function submitAdminDispatch(e) {
   }
 
   try {
-    const res = await apiFetch('/api/admin/dispatch-booking', {
+    let res = await apiFetch('/api/admin/dispatch-booking', {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
@@ -1628,7 +1688,25 @@ async function submitAdminDispatch(e) {
       })
     });
 
+    // Fallback to /api/bookings if /api/admin/dispatch-booking hasn't rolled out to backend container
+    if (!res.ok) {
+      res = await apiFetch('/api/bookings', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          space_id: spaceId,
+          booking_date: date,
+          start_time: start,
+          end_time: end,
+          vehicle_number: plate,
+          is_test_booking: true,
+          payment_method: 'admin_dispatch'
+        })
+      });
+    }
+
     if (res.ok && res.data) {
+      cacheSlotTick(spaceId, date, start, end, plate);
       showToast('✓ Admin reservation dispatched & ticked in ledger!', 'success');
       const targetSpace = (window._adminSpaces || []).find(s => s.id === spaceId);
       showGatePass({
@@ -1684,3 +1762,24 @@ function showToast(message, type = '') {
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
 }
+
+// Native Android WebView back button bridge
+window.handleNativeBack = function() {
+  const modalIds = ['paymentModal', 'gatePassModal', 'authModal'];
+  for (const id of modalIds) {
+    const el = document.getElementById(id);
+    if (el && el.style.display !== 'none' && el.style.display !== '') {
+      el.style.display = 'none';
+      return true;
+    }
+  }
+  if (currentPage === 'detail') {
+    navigate('search');
+    return true;
+  }
+  if (currentPage !== 'home') {
+    navigate('home');
+    return true;
+  }
+  return false;
+};

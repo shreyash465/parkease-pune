@@ -1,5 +1,12 @@
 node_modules/
 *.zip
 *.log
+*.db
 deploy-cloudflare/
 .DS_Store
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/local.properties
+*.jks
+*.keystore

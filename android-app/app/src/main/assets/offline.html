@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ParkEase — Connection Offline</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0F172A;
+      color: #F8FAFC;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .card {
+      background: #1E293B;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 32px 24px;
+      max-width: 340px;
+      width: 100%;
+    }
+    .logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: #0F172A;
+      border: 1px solid #334155;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 24px;
+      color: #FFFFFF;
+      margin-bottom: 18px;
+    }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    p { font-size: 14px; color: #94A3B8; line-height: 1.5; margin-bottom: 24px; }
+    button {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 10px;
+      border: none;
+      background: #2563EB;
+      color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">P</div>
+    <h1>Network Connection Unavailable</h1>
+    <p>ParkEase requires an active mobile data or Wi-Fi connection to sync live parking slots and gate passes.</p>
+    <button onclick="if (window.ParkEaseBridge) { window.ParkEaseBridge.reloadApp(); } else { window.location.href = 'https://parkease.aenrox.com/'; }">
+      Retry Connection
+    </button>
+  </div>
+</body>
+</html>
