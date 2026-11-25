@@ -1552,3 +1552,42 @@ table tr:last-child td {
   .mobile-only { display: none !important; }
   .mobile-user-indicator { display: none !important; }
 }
+
+
+/* ===== PRINT STYLES — Only show gate pass card when printing ===== */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .modal-overlay {
+    position: static !important;
+    visibility: visible !important;
+    display: block !important;
+    background: transparent !important;
+  }
+  .modal-overlay * {
+    visibility: visible !important;
+  }
+  .access-badge-container {
+    visibility: visible !important;
+    position: relative !important;
+    border: 2px solid #000 !important;
+    padding: 24px !important;
+    margin: 0 auto !important;
+    max-width: 480px !important;
+    page-break-inside: avoid !important;
+    background: #fff !important;
+  }
+  .access-badge-container * {
+    visibility: visible !important;
+  }
+  /* Hide nav, tabs, buttons, toast, footer when printing */
+  .navbar, .mobile-tab-bar, .footer, .toast,
+  .btn, button, nav, .modal-close-btn {
+    display: none !important;
+  }
+  /* Show only the pass QR and details */
+  .access-pass-qr img {
+    max-width: 140px !important;
+  }
+}

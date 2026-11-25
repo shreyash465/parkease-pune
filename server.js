@@ -388,7 +388,7 @@ app.get('/api/spaces/:id/availability', (req, res) => {
 });
 
 // Admin direct complimentary reservation dispatch (Zero payment required)
-app.post('/api/admin/dispatch-booking', auth, (req, res) => {
+app.post('/api/admin/dispatch-booking', auth, requireAdmin, (req, res) => {
   const { space_id, booking_date, start_time, end_time, vehicle_number } = req.body;
   const space = queryOne('SELECT * FROM parking_spaces WHERE id = ?', [space_id]);
   if (!space) return res.status(404).json({ error: 'Space not found' });
@@ -490,8 +490,13 @@ app.get('/api/dashboard', auth, (req, res) => {
   res.json({ ownerStats, renterStats, spaceCount: spaceCount ? spaceCount.count : 0 });
 });
 
-// Admin analytics (Institutional Platform Clearing Ledger)
-app.get('/api/admin/analytics', (req, res) => {
+// Admin analytics (Institutional Platform Clearing Ledger) — admin only
+app.get('/api/admin/analytics', auth, (req, res) => {
+  // Check admin role
+  const user = queryOne('SELECT role, email FROM users WHERE id = ?', [req.user.id]);
+  if (!user || (user.role !== 'admin' && user.email !== 'vishwajeet@aenrox.com')) {
+    return res.status(403).json({ error: 'Admin access restricted' });
+  }
   const totalUsers = queryOne('SELECT COUNT(*) as count FROM users');
   const totalSpaces = queryOne('SELECT COUNT(*) as count FROM parking_spaces WHERE is_active = 1');
   const totalBookings = queryOne('SELECT COUNT(*) as count FROM bookings');
@@ -543,6 +548,69 @@ app.get('/api/areas', (req, res) => {
     max_price: Math.ceil(a.max_price / 0.80)
   }));
   res.json(areas);
+});
+
+// Admin role check middleware
+function requireAdmin(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+  const user = queryOne('SELECT role, email FROM users WHERE id = ?', [req.user.id]);
+  if (!user || (user.role !== 'admin' && user.email !== 'vishwajeet@aenrox.com')) {
+    return res.status(403).json({ error: 'Admin access restricted' });
+  }
+  next();
+}
+
+// Admin: Flush all test data and reset to clean demo state
+app.post('/api/admin/flush-data', auth, requireAdmin, (req, res) => {
+  try {
+    // Delete all bookings
+    runSQL('DELETE FROM bookings');
+    // Delete all reviews
+    runSQL('DELETE FROM reviews');
+    // Delete all user-created spaces (keep demo seed spaces by deleting all)
+    runSQL('DELETE FROM parking_spaces');
+    // Delete all users except the admin
+    runSQL("DELETE FROM users WHERE email != 'vishwajeet@aenrox.com'");
+
+    // Re-seed clean demo data
+    const bcrypt = require('bcryptjs');
+    const hashedPass = bcrypt.hashSync('demo123', 10);
+
+    // Clean demo users with fictional names and dummy phone numbers
+    runSQL('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Aditya Kulkarni', 'aditya@demo.com', '9822000001', hashedPass, 'both']);
+    runSQL('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Neha Deshmukh', 'neha@demo.com', '9822000002', hashedPass, 'both']);
+    runSQL('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Rohan Patil', 'rohan@demo.com', '9822000003', hashedPass, 'both']);
+    runSQL('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Meera Joshi', 'meera@demo.com', '9822000004', hashedPass, 'both']);
+    runSQL('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Siddharth Bhosale', 'siddharth@demo.com', '9822000005', hashedPass, 'both']);
+
+    // Re-seed parking spaces with clean data (using new user IDs)
+    const adminUser = queryOne("SELECT id FROM users WHERE email = 'vishwajeet@aenrox.com'");
+    const demoUsers = queryAll("SELECT id FROM users WHERE email != 'vishwajeet@aenrox.com' ORDER BY id");
+
+    if (demoUsers.length >= 5) {
+      const u1 = demoUsers[0].id, u2 = demoUsers[1].id, u3 = demoUsers[2].id, u4 = demoUsers[3].id, u5 = demoUsers[4].id;
+
+      const spaces = [
+        [u1, 'Covered Car Parking - Koregaon Park', 'Lane 5, Koregaon Park, Near Osho Ashram', 'Koregaon Park', 'Osho Ashram', 18.5362, 73.8946, 'car', 64, '09:00', '19:00', 'Mon,Tue,Wed,Thu,Fri', 'Secure covered parking in a gated society. 24/7 CCTV surveillance.', 1, 1, 1],
+        [u2, 'Open Parking - FC Road', 'Near Fergusson College, FC Road', 'FC Road', 'Fergusson College', 18.5236, 73.8403, 'car', 48, '08:30', '18:30', 'Mon,Tue,Wed,Thu,Fri,Sat', 'Open parking space in residential society. 5 min walk to FC Road.', 0, 1, 0],
+        [u3, 'Bike Parking - Hinjewadi Phase 1', 'Near Rajiv Gandhi Infotech Park', 'Hinjewadi', 'Infosys Gate', 18.5912, 73.7389, 'bike', 24, '09:00', '20:00', 'Mon,Tue,Wed,Thu,Fri', 'Covered bike parking in IT Park area. Perfect for daily commuters.', 1, 0, 1],
+        [u4, 'Premium Parking - Viman Nagar', 'Near Phoenix Mall, Viman Nagar', 'Viman Nagar', 'Phoenix Mall', 18.5679, 73.9143, 'car', 80, '08:00', '22:00', 'Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Premium covered parking with security guard. Walking distance to Phoenix Mall.', 1, 1, 1],
+        [u5, 'Society Parking - Kothrud', 'Near MIT College, Kothrud', 'Kothrud', 'MIT College', 18.5074, 73.8077, 'car', 40, '09:00', '18:00', 'Mon,Tue,Wed,Thu,Fri', 'Affordable parking in family society. Well-lit area with watchman.', 0, 0, 1],
+        [u1, 'Two-Wheeler Spot - MG Road', 'Near MG Road Metro Station', 'MG Road', 'Metro Station', 18.5169, 73.8554, 'bike', 24, '07:00', '21:00', 'Mon,Tue,Wed,Thu,Fri,Sat', 'Convenient bike parking near metro station.', 0, 1, 0],
+        [u3, 'Covered Parking - Baner', 'Near Westend Mall, Baner', 'Baner', 'Westend Mall', 18.5590, 73.7868, 'car', 56, '08:00', '20:00', 'Mon,Tue,Wed,Thu,Fri,Sat', 'Spacious covered parking in premium society.', 1, 1, 0],
+        [u4, 'Basement Parking - Shivajinagar', 'Near Shivajinagar Bus Stand', 'Shivajinagar', 'Bus Stand', 18.5308, 73.8474, 'car', 72, '07:00', '22:00', 'Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Basement parking with 24/7 access. CCTV monitored.', 1, 1, 1],
+      ];
+
+      for (const s of spaces) {
+        runSQL('INSERT INTO parking_spaces (owner_id, title, address, area, landmark, lat, lng, vehicle_type, price_per_hour, available_from, available_to, available_days, description, is_covered, has_cctv, has_guard) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', s);
+      }
+    }
+
+    res.json({ message: 'All test data flushed. Clean demo data re-seeded successfully.', ok: true });
+  } catch (err) {
+    console.error('Flush data error:', err);
+    res.status(500).json({ error: 'Failed to flush data' });
+  }
 });
 
 // Serve frontend

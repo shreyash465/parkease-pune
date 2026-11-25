@@ -5,12 +5,14 @@ import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.os.Bundle
 import android.os.Message
+import android.print.PrintManager
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
@@ -296,7 +298,7 @@ class MainActivity : ComponentActivity() {
   private fun configureSettings(settings: WebSettings) {
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = true
-    settings.databaseEnabled = true
+    // settings.databaseEnabled removed — deprecated no-op in modern Android
     settings.setGeolocationEnabled(true)
     settings.javaScriptCanOpenWindowsAutomatically = true
     settings.setSupportMultipleWindows(true)
@@ -355,6 +357,35 @@ class MainActivity : ComponentActivity() {
     fun reloadApp() {
       runOnUiThread {
         webView.loadUrl(appUrl)
+      }
+    }
+
+    @JavascriptInterface
+    fun printGatePass() {
+      runOnUiThread {
+        try {
+          val printManager = getSystemService(Context.PRINT_SERVICE) as PrintManager
+          val printAdapter = webView.createPrintDocumentAdapter("ParkEase-GatePass")
+          printManager.print("ParkEase Gate Pass", printAdapter, null)
+        } catch (e: Exception) {
+          Toast.makeText(this@MainActivity, "Print service unavailable", Toast.LENGTH_SHORT).show()
+        }
+      }
+    }
+
+    @JavascriptInterface
+    fun shareGatePass(text: String) {
+      runOnUiThread {
+        try {
+          val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+            putExtra(Intent.EXTRA_SUBJECT, "ParkEase Gate Pass")
+          }
+          startActivity(Intent.createChooser(shareIntent, "Share Gate Pass"))
+        } catch (e: Exception) {
+          Toast.makeText(this@MainActivity, "Share failed", Toast.LENGTH_SHORT).show()
+        }
       }
     }
   }

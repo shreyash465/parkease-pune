@@ -131,11 +131,11 @@ function seedDemoData() {
     const hashedPass = bcrypt.hashSync('demo123', 10);
 
     // Demo users (IDs 1-5 — spaces and bookings reference owner_ids 1-5)
-    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Rahul Sharma', 'rahul@demo.com', '9876543210', hashedPass, 'both']);
-    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Priya Deshmukh', 'priya@demo.com', '9876543211', hashedPass, 'both']);
-    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Amit Kulkarni', 'amit@demo.com', '9876543212', hashedPass, 'both']);
-    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Sneha Patil', 'sneha@demo.com', '9876543213', hashedPass, 'both']);
-    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Vikram Joshi', 'vikram@demo.com', '9876543214', hashedPass, 'both']);
+    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Aditya Kulkarni', 'aditya@demo.com', '9822000001', hashedPass, 'both']);
+    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Neha Deshmukh', 'neha@demo.com', '9822000002', hashedPass, 'both']);
+    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Rohan Patil', 'rohan@demo.com', '9822000003', hashedPass, 'both']);
+    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Meera Joshi', 'meera@demo.com', '9822000004', hashedPass, 'both']);
+    db.run('INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)', ['Siddharth Bhosale', 'siddharth@demo.com', '9822000005', hashedPass, 'both']);
 
     // Ensure admin exists (ID 6 on fresh DB)
     ensureAdminExists();

@@ -229,11 +229,12 @@ function updateNav() {
   if (!nav) return;
 
   if (currentUser) {
+    const isAdmin = currentUser.role === 'admin' || currentUser.email === 'vishwajeet@aenrox.com';
     nav.innerHTML = `
       <a href="#" onclick="navigate('search')" class="${currentPage === 'search' ? 'active' : ''}">Inventory</a>
       <a href="#" onclick="navigate('list-space')" class="${currentPage === 'list-space' ? 'active' : ''}">List Space</a>
       <a href="#" onclick="navigate('dashboard')" class="${currentPage === 'dashboard' ? 'active' : ''}">Dashboard</a>
-      <a href="#" onclick="navigate('admin')" class="${currentPage === 'admin' ? 'active' : ''}">Clearing / Admin</a>
+      ${isAdmin ? `<a href="#" onclick="navigate('admin')" class="${currentPage === 'admin' ? 'active' : ''}">Clearing / Admin</a>` : ''}
       <span style="color:var(--slate-300);font-size:12px;margin:0 4px;">|</span>
       <span style="color:var(--slate-700);font-size:13px;font-weight:600;">${currentUser.name}</span>
       <button onclick="logout()" style="color:var(--status-danger-text);font-size:12px;cursor:pointer;background:none;border:none;">Sign Out</button>
@@ -241,7 +242,6 @@ function updateNav() {
   } else {
     nav.innerHTML = `
       <a href="#" onclick="navigate('search')" class="${currentPage === 'search' ? 'active' : ''}">Explore Inventory</a>
-      <a href="#" onclick="navigate('admin')" class="${currentPage === 'admin' ? 'active' : ''}">Platform Clearing</a>
       <button onclick="showAuthModal('login')" class="btn btn-secondary btn-sm">Sign In</button>
       <button onclick="showAuthModal('register')" class="btn btn-dark btn-sm">Register</button>
     `;
@@ -275,6 +275,13 @@ function updateMobileTabBar() {
     const page = tab.getAttribute('data-page');
     tab.classList.toggle('active', page === currentPage);
   });
+
+  // Show/hide admin tab based on role
+  const adminTab = tabBar.querySelector('[data-page="admin"]');
+  if (adminTab) {
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.email === 'vishwajeet@aenrox.com');
+    adminTab.style.display = isAdmin ? '' : 'none';
+  }
 
   // Update auth tab
   const authTab = document.getElementById('mobileAuthTab');
@@ -311,7 +318,14 @@ function navigate(page, data) {
     case 'list-space':
       if (!currentUser) { showAuthModal('login'); navigate('home'); return; }
       break;
-    case 'admin': loadAdmin(); break;
+    case 'admin':
+      if (!currentUser || (currentUser.role !== 'admin' && currentUser.email !== 'vishwajeet@aenrox.com')) {
+        showToast('Admin access restricted to platform administrators', 'error');
+        navigate('home');
+        return;
+      }
+      loadAdmin();
+      break;
   }
 }
 
@@ -613,12 +627,14 @@ async function loadSpaceDetail(id) {
           </div>
 
           <button class="btn btn-dark btn-lg" style="width:100%;font-size:14px;" onclick="confirmBooking()">
-            Reserve Space & Proceed to Settlement
+            Reserve Space & Proceed to Payment
           </button>
 
+          ${currentUser && (currentUser.role === 'admin' || currentUser.email === 'vishwajeet@aenrox.com') ? `
           <button class="btn btn-secondary btn-lg" style="width:100%;font-size:13px;margin-top:10px;font-weight:700;border:1px dashed var(--brand-accent);background:var(--brand-accent-subtle);color:var(--brand-accent);" onclick="instantTestBooking()">
-            ⚡ Instant Test Booking (Sandbox — ₹0 Bypass)
+            ⚡ Admin Test Booking (Sandbox — ₹0 Bypass)
           </button>
+          ` : ''}
 
           <div style="text-align:center;font-size:11px;color:var(--slate-400);margin-top:10px;">
             Instant Gate Authorization Issued via QR Protocol
@@ -766,7 +782,7 @@ function updateCost() {
   if (breakdown) {
     breakdown.innerHTML = `
       <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--slate-600);margin-bottom:6px;">
-        <span>Tariff (${hours} hrs &times; ₹${commuterRate}/hr)</span>
+        <span>Tariff (${formatDuration(hours)} &times; ₹${commuterRate}/hr)</span>
         <span class="mono">₹${total}</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--slate-500);margin-bottom:6px;">
@@ -859,6 +875,7 @@ async function instantTestBooking() {
       showToast('✓ Test reservation confirmed & slot ticked!', 'success');
       showGatePass({
         id: res.data.id,
+        space_id: currentSpace.id,
         space_title: currentSpace.title,
         address: currentSpace.address,
         area: currentSpace.area,
@@ -866,8 +883,12 @@ async function instantTestBooking() {
         booking_date: bookDate,
         start_time: start,
         end_time: end,
+        hours,
+        customer_rate: commuterRate,
         owner_name: currentSpace.owner_name,
-        total_amount: total
+        total_amount: total,
+        is_test_booking: true,
+        payment_method: 'sandbox_zero_bypass'
       });
       // Refresh slot availability table immediately so slot turns red/ticked
       renderSlotAvailability(currentSpace.id, bookDate);
@@ -1273,10 +1294,16 @@ function showGatePass(booking) {
           Present this verified pass upon arrival at the housing society entrance barrier. Security personnel can scan the token for bay allocation access.
         </div>
 
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="window.print()">Print Official Pass</button>
-          <button class="btn btn-dark btn-sm" style="flex:1;" onclick="closeGatePassModal(); navigate('dashboard');">Go to Dashboard</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" style="flex:1;min-width:100px;" onclick="printGatePass()">🖨️ Print Pass</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1;min-width:90px;" onclick="shareGatePass()">📤 Share</button>
+          <button class="btn btn-dark btn-sm" style="flex:1;min-width:120px;" onclick="closeGatePassModal(); navigate('dashboard');">Go to Dashboard</button>
         </div>
+        ${(booking.is_test_booking || booking.payment_method === 'sandbox_zero_bypass' || booking.payment_method === 'sandbox') ? `
+          <button class="btn btn-primary btn-sm" style="width:100%;margin-top:10px;padding:10px;" onclick='proceedToPaymentFromPass(${JSON.stringify(booking).replace(/'/g, "&apos;")})'>
+            💳 Proceed with Real Payment (₹${booking.total_amount || 0})
+          </button>
+        ` : ''}
       </div>
     </div>
   `;
@@ -1286,6 +1313,59 @@ function showGatePass(booking) {
 
 function closeGatePassModal() {
   document.getElementById('gatePassModal').style.display = 'none';
+}
+
+function proceedToPaymentFromPass(booking) {
+  closeGatePassModal();
+  const hours = Number(booking.hours) || 1;
+  const total = Number(booking.total_amount) || 100;
+  pendingBooking = {
+    space_id: booking.space_id,
+    booking_date: booking.booking_date,
+    start_time: booking.start_time,
+    end_time: booking.end_time,
+    vehicle_number: booking.vehicle_number,
+    hours,
+    customer_rate: booking.customer_rate || Math.round(total / hours),
+    total_amount: total,
+    spaceTitle: booking.space_title || booking.title,
+    spaceAddress: booking.address || '',
+    spaceArea: booking.area || 'Pune',
+    ownerName: booking.owner_name || 'Host'
+  };
+  openPaymentModal();
+}
+
+// ==================== PRINT & SHARE GATE PASS ====================
+
+function printGatePass() {
+  // Use Android native print bridge if available (WebView)
+  if (window.ParkEaseBridge && window.ParkEaseBridge.printGatePass) {
+    window.ParkEaseBridge.printGatePass();
+  } else {
+    // Browser fallback
+    window.print();
+  }
+}
+
+function shareGatePass() {
+  const modal = document.getElementById('gatePassModal');
+  const badge = modal ? modal.querySelector('.access-badge-container') : null;
+  const text = badge ? badge.innerText : 'ParkEase Gate Pass';
+
+  // Use Android native share bridge if available
+  if (window.ParkEaseBridge && window.ParkEaseBridge.shareGatePass) {
+    window.ParkEaseBridge.shareGatePass(text);
+  } else if (navigator.share) {
+    navigator.share({ title: 'ParkEase Gate Pass', text: text }).catch(() => {});
+  } else {
+    // Copy to clipboard fallback
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Gate pass details copied to clipboard', 'success');
+    }).catch(() => {
+      showToast('Could not share or copy pass', 'error');
+    });
+  }
 }
 
 // ==================== LIST SPACE ====================
@@ -1444,11 +1524,11 @@ function renderDashTab(tab) {
         <div class="ledger-main">
           <h4>${b.title}</h4>
           <div class="sub">Sector: ${b.area} &bull; Vehicle: <span class="mono" style="font-weight:600;color:var(--slate-800);">${b.vehicle_number || 'N/A'}</span></div>
-          <div class="sub" style="margin-top:2px;">Scheduled: ${b.booking_date} (${formatTime(b.start_time)} &ndash; ${formatTime(b.end_time)}, ${b.hours} hrs) &bull; Host: ${b.owner_name} (${b.owner_phone})</div>
+          <div class="sub" style="margin-top:2px;">Scheduled: ${b.booking_date} (${formatTime(b.start_time)} &ndash; ${formatTime(b.end_time)}, ${formatDuration(b.hours)}) &bull; Host: ${b.owner_name} (${b.owner_phone})</div>
         </div>
         <div style="text-align:right;">
           <div class="ledger-amount">₹${b.total_amount}</div>
-          <span class="badge badge-confirmed">✓ ${b.status === 'confirmed' ? 'Confirmed & Ticked' : b.status}</span>
+          <span class="badge ${b.status === 'cancelled' ? 'badge-cancelled' : 'badge-confirmed'}">${b.status === 'confirmed' ? '✓ Confirmed & Ticked' : b.status.toUpperCase()}</span>
           ${b.status === 'confirmed' ? `
             <div style="margin-top:10px;display:flex;gap:6px;justify-content:flex-end;">
               <button class="btn btn-dark btn-sm" onclick='showGatePass(${JSON.stringify(b).replace(/'/g, "&apos;")})'>Access Pass</button>
@@ -1522,7 +1602,21 @@ async function cancelBooking(id) {
       headers: authHeaders()
     });
     if (res.ok) {
-      showToast('Reservation cancelled', 'success');
+      // Flush ALL localStorage slot ticks — the server is the source of truth
+      // This prevents stale cached ticks from showing cancelled slots as booked
+      try {
+        localStorage.removeItem('parkease_slot_ticks');
+      } catch (e) {}
+
+      showToast('Reservation cancelled — slot released', 'success');
+
+      // Refresh slot availability grid if viewing a space detail
+      if (currentSpace) {
+        const dateEl = document.getElementById('bookDate');
+        const date = dateEl ? dateEl.value : new Date().toISOString().split('T')[0];
+        renderSlotAvailability(currentSpace.id, date);
+      }
+
       loadDashboard();
     } else {
       showToast(res.error || 'Failed to cancel', 'error');
@@ -1554,7 +1648,7 @@ async function toggleSpace(id) {
 async function loadAdmin() {
   try {
     const [analyticsRes, spacesRes] = await Promise.all([
-      apiFetch('/api/admin/analytics'),
+      apiFetch('/api/admin/analytics', { headers: authHeaders() }),
       apiFetch('/api/spaces')
     ]);
 
@@ -1645,8 +1739,48 @@ async function loadAdmin() {
       `;
       }).join('');
     }
+    // Add Flush Data button in admin panel
+    const adminContainer = document.querySelector('#page-admin .container');
+    if (adminContainer && !document.getElementById('adminFlushSection')) {
+      const flushDiv = document.createElement('div');
+      flushDiv.id = 'adminFlushSection';
+      flushDiv.style.cssText = 'margin-top:32px;padding:20px;background:var(--status-danger-bg);border:1px solid var(--status-danger-border);border-radius:var(--radius-md);';
+      flushDiv.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--status-danger-text);text-transform:uppercase;letter-spacing:0.06em;">Data Management</div>
+            <h3 style="font-size:15px;font-weight:800;color:var(--slate-900);margin-top:2px;">Flush Test Data & Reset System</h3>
+            <p style="font-size:12px;color:var(--slate-500);margin-top:2px;">Removes all user-created data (bookings, spaces, users) and re-seeds clean demo data with fictional names.</p>
+          </div>
+          <button class="btn btn-danger" style="white-space:nowrap;padding:10px 18px;font-weight:700;" onclick="flushAllTestData()">🗑️ Flush All Test Data</button>
+        </div>
+      `;
+      adminContainer.appendChild(flushDiv);
+    }
   } catch (e) {
     console.error('Failed to load admin:', e);
+  }
+}
+
+async function flushAllTestData() {
+  if (!confirm('⚠️ WARNING: This will DELETE all bookings, spaces, users (except admin) and re-seed clean demo data. This action cannot be undone. Continue?')) return;
+  if (!confirm('Are you absolutely sure? All test data including real phone numbers will be permanently removed.')) return;
+
+  try {
+    const res = await apiFetch('/api/admin/flush-data', {
+      method: 'POST',
+      headers: authHeaders()
+    });
+    if (res.ok) {
+      // Clear all localStorage caches
+      localStorage.removeItem('parkease_slot_ticks');
+      showToast('✓ All test data flushed! Clean demo data re-seeded.', 'success');
+      loadAdmin();
+    } else {
+      showToast(res.error || 'Failed to flush data', 'error');
+    }
+  } catch (err) {
+    showToast('Connection error during flush', 'error');
   }
 }
 
@@ -1736,6 +1870,14 @@ async function submitAdminDispatch(e) {
 }
 
 // ==================== HELPERS ====================
+
+function formatDuration(hours) {
+  const h = Number(hours) || 0;
+  if (h <= 0) return '0 mins';
+  if (h < 1) return `${Math.round(h * 60)} mins`;
+  const rounded = Math.round(h * 100) / 100;
+  return `${rounded} ${rounded === 1 ? 'hr' : 'hrs'}`;
+}
 
 function formatTime(time) {
   if (!time) return '';
