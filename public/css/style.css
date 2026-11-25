@@ -1220,19 +1220,20 @@ table tr:last-child td {
     font-size: 18px;
   }
 
-  /* Search view toggle + filters - horizontal scroll */
+  /* Search view toggle + filters - clean wrap without horizontal overflow */
   .section-header > div:last-child {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
+    overflow-x: visible;
+    padding-bottom: 0;
   }
 
   .section-header > div:last-child select {
-    min-width: 120px;
-    flex-shrink: 0;
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    width: auto !important;
   }
 
   /* Stats / KPI */
@@ -1257,7 +1258,17 @@ table tr:last-child td {
   /* Detail page */
   #detailContent {
     grid-template-columns: 1fr !important;
-    gap: 20px !important;
+    gap: 16px !important;
+  }
+
+  #detailContent > div > div[style*="padding:32px"],
+  #detailContent > div[style*="padding:32px"],
+  #detailContent > div > div[style*="padding:28px"] {
+    padding: 18px !important;
+  }
+
+  #detailContent h1 {
+    font-size: 20px !important;
   }
 
   /* Tabs */
@@ -1324,8 +1335,11 @@ table tr:last-child td {
 
   /* Buttons */
   .btn {
-    padding: 10px 16px;
+    padding: 10px 14px;
     font-size: 13px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.3;
   }
 
   .btn-lg {
